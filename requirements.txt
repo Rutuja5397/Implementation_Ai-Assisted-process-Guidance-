@@ -1,0 +1,28 @@
+# Core backend
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.9
+python-dotenv>=1.0.0
+
+# Database
+sqlalchemy>=2.0.23
+
+# Auth
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+
+# AI / LLM
+anthropic>=0.28.0
+
+# RAG / Vector DB
+chromadb>=0.4.22
+sentence-transformers>=2.3.1
+
+# Frontend
+streamlit>=1.32.0
+requests>=2.31.0
+pandas>=2.2.0
+plotly>=5.18.0
+
+# Pydantic
+pydantic>=2.5.3

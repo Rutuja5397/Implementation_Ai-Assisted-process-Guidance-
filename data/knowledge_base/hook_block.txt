@@ -1,0 +1,62 @@
+COMPONENT: Hook Block (Hook, Sheaves, and Block Assembly)
+DOCUMENT TYPE: Inspection and Maintenance Manual
+APPLIES TO: All Wire Rope Hoist Configurations
+
+=== OVERVIEW ===
+The hook block carries the load and redirects the wire rope through sheaves. The hook itself is the primary load attachment point and is subject to deformation under overload. All hook block components are safety-critical and must be inspected per EN 13001 and ASME B30.10.
+
+=== HOOK INSPECTION CRITERIA ===
+
+MANDATORY DISCARD CONDITIONS:
+1. Throat opening increase >10% from nominal (measured with calipers or go/no-go gauge)
+   Example: 50 mm nominal throat → discard at ≥55 mm
+2. Any visible crack (dye-penetrant or magnetic particle test if suspected)
+3. Hook twist >10° from shank axis
+4. Surface wear >10% of original cross-sectional area
+5. Weld repair not approved by OEM (welded hooks must be discarded)
+6. Safety latch missing, damaged, or not functioning
+
+CAUTION CONDITIONS (monitor closely):
+- Throat opening increase 5–10%: increase inspection frequency
+- Light surface corrosion: clean and monitor
+- Wear at saddle point: measure depth
+
+=== HOOK INSPECTION PROCEDURE ===
+1. Visually inspect all surfaces under good lighting
+2. Measure throat opening with calibrated calipers (record in log)
+3. Check safety latch: must spring-close automatically, no play
+4. Check hook nut and securing pin/cotter: must be in place and undamaged
+5. Check hook swivel rotation (if swivel type): should rotate freely without excessive play
+6. Inspect shank for cracks at thread root (common fatigue location)
+
+=== SHEAVE INSPECTION ===
+- Groove wear: check groove radius with template gauge (should be 0.53 × rope dia)
+- Bearing condition: rotate sheave by hand – should be smooth, no roughness
+- Sheave flange condition: no cracks or chips
+- Sheave alignment: must be in plane of wire rope reeving
+
+=== HOOK BLOCK BEARING ===
+- Thrust bearing supports vertical load
+- Symptoms of failed bearing: hook does not rotate freely, grinding when load rotated
+- Check: lift load slightly, try to rotate hook by hand → should turn with light effort
+
+=== SWIVEL HOOK TYPES ===
+1. Fixed hook: does not rotate → load must not be allowed to rotate
+2. Swivel hook: bearing allows load rotation → inspect bearing condition
+3. Clevis hook: for chain slings → check clevis pin and cotter
+
+=== LOAD TESTING AFTER REPLACEMENT ===
+After hook or block replacement:
+- Test at 100% rated load: visual inspection
+- Test at 110% rated load (overload test): check throat opening immediately after
+- Record: before/after throat measurements
+
+=== MEASUREMENT REFERENCE TABLE ===
+Parameter              | Normal                 | Discard Threshold
+-----------------------|------------------------|------------------
+Throat opening         | Nominal (per OEM)      | >10% increase from nominal
+Hook twist             | 0°                     | >10° twist from shank
+Safety latch           | Spring-closes fully    | Any failure to close
+Sheave groove radius   | 0.53–0.55 × rope dia   | >0.60 × rope dia (worn)
+Bearing rotation       | Smooth, free           | Rough, binding, or noisy
+Shank thread           | No cracks              | Any crack → Discard

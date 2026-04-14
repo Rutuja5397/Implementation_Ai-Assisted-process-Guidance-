@@ -1,0 +1,103 @@
+COMPONENT: Gearbox (Hoist / Trolley / Bridge)
+DOCUMENT TYPE: Maintenance and Troubleshooting Manual
+APPLIES TO: Overhead Cranes, Hoist Units, Crane Travel Drives
+
+=== OVERVIEW ===
+The gearbox reduces motor speed and multiplies torque to drive the hoist drum or travel wheels. Hoist gearboxes are typically helical or bevel-helical type, enclosed in a cast iron or welded steel housing with splash or forced lubrication.
+
+=== KEY PARAMETERS ===
+- Gear ratio: 10:1 to 200:1 (application dependent)
+- Lubrication: splash oil bath (small units) or forced circulation (large units)
+- Oil grade: ISO VG 220 or ISO VG 320 (most hoist gearboxes); check nameplate
+- Operating temperature: max 80°C oil temperature
+- Oil volume: check sight glass or dipstick; do not overfill (>75% of sight glass = overfull)
+
+=== COMMON FAILURE MODES ===
+
+1. ABNORMAL NOISE – GRINDING
+   Causes:
+   - Gear tooth damage (pitting, spalling, or breakage)
+   - Bearing damage (brinelling, race damage)
+   - Contamination in oil (metal particles)
+   - Insufficient lubrication
+
+   Diagnostic steps:
+   a. Listen carefully: grinding with load = gear damage; continuous grinding = bearing
+   b. Check oil level: low oil → inadequate lubrication
+   c. Take oil sample: metal particles, dark colour, milky appearance (water ingress)
+   d. Check oil temperature via IR thermometer at gearbox housing
+   e. If metal particles found → drain oil, inspect gears, replace bearings
+
+2. ABNORMAL NOISE – WHINING
+   Causes:
+   - Gear misalignment (worn shafts, bearing wear)
+   - Wrong oil viscosity (too thin)
+   - Early-stage gear pitting
+
+   Diagnostic steps:
+   a. Whining increases with load speed → gear alignment issue
+   b. Whining constant at all loads → oil viscosity issue
+   c. Check oil viscosity grade vs. nameplate specification
+
+3. OIL LEAKAGE
+   Causes:
+   - Worn shaft seals (lip seals at input/output shafts)
+   - Gasket failure (cover plate gasket)
+   - Overfilled oil (excessive splash → leaks past seals)
+   - Housing crack (rare; impact damage)
+
+   Diagnostic steps:
+   a. Identify leak point: input shaft, output shaft, drain plug, breather, or cover
+   b. Check oil level: overfill is common cause
+   c. Inspect breather/vent: blocked breather → pressure buildup → seal leakage
+   d. Clean exterior, run briefly, identify active leak point
+
+4. GEARBOX OVERHEATING (Oil temp >80°C)
+   Causes:
+   - Low oil level (inadequate cooling)
+   - Wrong oil viscosity (too thick = excessive churning heat)
+   - Overloaded crane
+   - Blocked oil cooler (forced lubrication systems)
+   - Bearing failure causing heat generation
+
+   Diagnostic steps:
+   a. Measure oil temperature (IR gun on housing, or temperature probe in oil)
+   b. Check oil level and viscosity grade
+   c. Verify crane is not overloaded (check load cell if fitted)
+   d. Allow gearbox to cool; restart with monitoring
+
+5. VIBRATION / SHAFT MOVEMENT
+   Causes:
+   - Worn gearbox mounting (anti-vibration mounts)
+   - Output shaft bearing failure
+   - Gear tooth breakage (sudden onset vibration)
+
+=== OIL ANALYSIS INTERPRETATION ===
+Normal oil: amber/golden colour, clean, no particles
+Warning signs:
+- Dark brown/black → oxidation, overheating history
+- Milky/cloudy → water contamination (seal failure or condensation)
+- Grey metallic particles → gear/bearing wear (URGENT)
+- Sludge at bottom → severe degradation
+
+Oil change intervals:
+- Initial fill: change at 500 operating hours or 3 months (whichever first) to flush break-in wear particles
+- Standard interval: 2000 hours or annually
+- Severe conditions (dusty, hot): 1000 hours
+
+=== MEASUREMENT REFERENCE TABLE ===
+Parameter              | Normal Range          | Action Threshold
+-----------------------|-----------------------|------------------
+Oil Temperature        | 40–75°C               | >80°C → Reduce duty; investigate
+Oil Level              | Mid-sight-glass        | Below min → Stop; replenish
+Oil Colour             | Amber/clean           | Grey/milky → Change immediately
+Gearbox Vibration      | <2.8 mm/s RMS         | >4.5 mm/s RMS → Inspect gears
+Noise Level (dB)       | Baseline ±3 dB        | >10 dB increase → Investigate
+
+=== OIL GRADES BY APPLICATION ===
+Application            | Recommended Grade
+-----------------------|------------------
+Hoist gearbox          | ISO VG 220 (mineral) or PAO 220 (synthetic)
+Trolley travel         | ISO VG 150 or VG 220
+Bridge travel          | ISO VG 220
+High temp. environment | ISO VG 320 or synthetic equivalent

@@ -1,0 +1,110 @@
+COMPONENT: Control System (PLC, Contactors, Overload Relays, Pendant)
+DOCUMENT TYPE: Maintenance and Troubleshooting Manual
+APPLIES TO: Overhead Cranes with Electrical Control Panels
+
+=== OVERVIEW ===
+The crane control system includes the main control panel (MCC/switchgear), programmable logic controller (PLC) or relay-logic panel, contactors for motor switching, overload relays, safety relays, and the operator pendant/radio remote. Faults in this system manifest as non-operation, erratic behaviour, or safety system activations.
+
+=== CONTROL PANEL COMPONENTS ===
+1. Main isolator / disconnector
+2. Main contactor (motor power)
+3. Direction contactors (forward/reverse for each axis)
+4. Overload relays (thermal or electronic)
+5. Control transformer (400V → 24VAC/VDC control circuit)
+6. PLC or relay logic (sequencing, safety interlocks)
+7. Safety relay module (E-stop, slack rope, overload monitoring)
+8. Brake rectifier module (24VDC for brake coil)
+9. Phase sequence relay (prevents single-phase operation)
+10. Anti-condensation heaters (in cold/humid environments)
+
+=== COMMON FAILURE MODES ===
+
+1. CRANE COMPLETELY DEAD (No response to pendant)
+   Causes:
+   - Main isolator OFF or tripped
+   - Main fuse blown
+   - Emergency stop activated (anywhere in E-stop chain)
+   - Control transformer failure
+   - Phase failure (phase sequence relay tripped)
+
+   Diagnostic steps:
+   a. Check main isolator position: ON/OFF/TRIPPED
+   b. Check incoming voltage: 3-phase present at isolator input AND output?
+   c. Inspect main fuses (visual + continuity test)
+   d. Check E-stop mushroom buttons: all must be released (pulled out/twisted)
+   e. Check phase sequence relay indicator (LED status)
+   f. Measure control transformer output: should be 24V (AC or DC per design)
+   g. Check PLC power indicator (if PLC-controlled): PWR LED should be solid green
+
+2. SPECIFIC MOTION NOT WORKING (e.g., Hoist UP works, DOWN does not)
+   Causes:
+   - Contactor for that direction failed (coil fault or contact fault)
+   - Limit switch for that direction activated (travel limit)
+   - PLC output for that direction failed
+   - Pendant button/switch fault for that direction
+
+   Diagnostic steps:
+   a. Check relevant limit switch: is limit switch activated? Test by jogging away from limit
+   b. Observe contactor for that direction:
+      - Does contactor coil energise when button pressed? (listen for click, see armature move)
+      - If coil energises but motor doesn't run → contact failure (measure voltage across contacts)
+   c. Check PLC output indicator for that function (if accessible)
+   d. Test pendant button with multimeter (continuity in pressed position)
+
+3. MOTOR TRIPS ON OVERLOAD RELAY
+   Causes:
+   - Overloaded hoist (load exceeds rated capacity)
+   - Overload relay set too low (incorrect calibration)
+   - Single-phase condition (one phase lost → current on remaining phases increases)
+   - Stalled motor (brake not releasing, mechanical jam)
+
+   Diagnostic steps:
+   a. Check overload relay trip indicator
+   b. After trip: measure current on all 3 phases with clamp meter
+   c. Verify overload relay current setting matches motor nameplate FLA
+   d. Check if trip occurs immediately or after extended run (immediate = wiring fault; delayed = thermal overload)
+   e. Reset only after root cause identified
+
+4. ERRATIC OPERATION (Intermittent, random motion, unexpected stops)
+   Causes:
+   - Loose connections (vibration-induced)
+   - Contactor contact arcing/welding
+   - PLC program fault or CPU error
+   - Radio remote interference or weak signal
+   - Corrupted PLC program (check event log)
+
+   Diagnostic steps:
+   a. Inspect all terminal block connections (torque to spec, check for discolouration)
+   b. Check contactor contacts for pitting, burning, or welding
+   c. Check PLC diagnostics screen for fault codes
+   d. Test with pendant if radio remote suspected
+
+5. E-STOP WILL NOT RESET
+   Causes:
+   - One E-stop in chain not fully released
+   - Safety relay internal fault
+   - Wiring fault in E-stop loop
+
+   Diagnostic steps:
+   a. Check ALL E-stop buttons (panel, pendant, rope-pull if fitted): all must be released
+   b. Safety relay: check input LED indicators (all inputs should show active when E-stops released)
+   c. Safety relay reset: must be performed at panel, not remotely
+
+=== PENDANT TROUBLESHOOTING ===
+- Cable pendant: check cable for damage, bent contacts in connector
+- Radio remote: check battery level, antenna condition, receiver status LED
+- Test pendant continuity: each button should close circuit when pressed
+
+=== PLC FAULT CODE REFERENCE (Generic) ===
+- Red CPU LED: CPU fault → check program, power cycle, contact OEM
+- Yellow BATT LED: Battery low → replace backup battery (program retained but events lost)
+- I/O module LEDs: identify specific faulty I/O point
+
+=== MEASUREMENT REFERENCE TABLE ===
+Parameter                | Normal             | Action Threshold
+-------------------------|--------------------|------------------
+Control voltage (24VAC)  | 21.6–26.4V         | <20V → Check transformer
+Control voltage (24VDC)  | 22–26V             | <21V → Check PSU
+Contactor coil voltage   | ±10% of rated      | >±15% → Adjust tap
+Phase balance (incoming) | <2% imbalance      | >3% → Investigate supply
+E-stop loop resistance   | ~0Ω (loop closed)  | >5Ω → Loose connection

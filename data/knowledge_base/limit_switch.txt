@@ -1,0 +1,85 @@
+COMPONENT: Limit Switch (Hoist Upper/Lower, Travel End-of-Travel)
+DOCUMENT TYPE: Maintenance and Troubleshooting Manual
+APPLIES TO: All Overhead Crane Types
+
+=== OVERVIEW ===
+Limit switches are safety devices that stop crane motion before mechanical end-stops are reached. The hoist upper limit switch prevents over-travel of the hook block into the hoist machinery. Travel limit switches prevent bridge or trolley from running off the end of the runway/rail. All limit switches are wired in the normally-closed (NC) safety circuit – if they fail, the circuit opens and motion stops.
+
+=== TYPES ===
+1. Rotary/Cam-operated limit switch (upper/lower hoist limits via rope drum rotation counter)
+2. Roller-arm mechanical limit switch (direct contact by hook block or travelling assembly)
+3. Inductive proximity sensor (non-contact; more reliable in dirty environments)
+4. Rope/slack detection switch (separate; detects slack rope condition)
+
+=== HOIST UPPER LIMIT SWITCH ===
+Critical safety device: prevents hook block from over-travelling into hoist machinery.
+- Must stop hoist motion in UP direction with minimum 300mm clearance to hoist body
+- After triggering: only DOWN motion should be permitted
+- Test frequency: before each shift (mandatory per EN 14502)
+
+=== COMMON FAILURE MODES ===
+
+1. HOIST WILL NOT TRAVEL UP (Limit switch falsely activated)
+   Causes:
+   - Limit switch arm bent or displaced (bumped out of position)
+   - Cam/actuator worn (rotary type – not returning to correct position)
+   - Contacts corroded/stuck open (moisture ingress)
+   - Wiring fault (break in limit switch loop)
+
+   Diagnostic steps:
+   a. Check limit switch indicator on PLC panel (if available)
+   b. Measure continuity across limit switch terminals:
+      - NC contacts should show ~0Ω when switch NOT activated
+      - If measuring open circuit (OL) when not activated → switch stuck or faulty
+   c. Manually actuate the switch (careful – ensure crane is safe first)
+   d. Inspect actuator arm position and condition
+   e. Check wiring for mechanical damage (cable conduit, connector)
+
+2. HOOK BLOCK OVER-TRAVELS (Limit switch fails to stop motion)
+   Causes:
+   - Limit switch contacts welded closed (due to arcing)
+   - Limit switch not positioned correctly (adjustment needed)
+   - Bypass wired (NEVER acceptable in safety circuit)
+   - Double-insulated limit switch wired to wrong circuit terminal
+
+   Diagnostic steps:
+   a. Test switch operation: manually trigger it → hoist must stop in UP direction
+   b. Check switch contact resistance when activated: should be open circuit (OL)
+   c. Verify wiring polarity and circuit type (NC vs. NO)
+   d. Verify limit switch is correctly positioned (hook block must contact actuator at correct height)
+
+3. TRAVEL LIMIT SWITCH FAILURE
+   Causes:
+   - Actuator/buffer struck too hard (switch housing cracked)
+   - Alignment drift over time (vibration)
+   - Water ingress to switch housing
+   - Cable damage from crane movement
+
+   Diagnostic steps:
+   a. Visual inspection of switch housing for cracks or displacement
+   b. Check actuator alignment with travelling assembly striker plate
+   c. Test: drive crane toward limit at slow speed → should stop before mechanical buffer
+
+=== ADJUSTMENT PROCEDURE ===
+Upper Hoist Limit:
+1. Lock out crane (LOTO procedure)
+2. Manually position hook at desired stop height (minimum 300 mm below hoist body)
+3. Adjust cam or rotary counter position to activate limit switch at this position
+4. Restore power
+5. Slowly raise hook to verify limit activates at correct position
+6. Confirm: after limit activation, DOWN direction still operable
+7. Confirm: UP direction blocked after limit activation
+8. Record adjustment in maintenance log
+
+=== INSPECTION SCHEDULE ===
+- Before each shift: functional test of upper hoist limit (raise hook until limit activates)
+- Monthly: full inspection of all limit switches (continuity, alignment, housing condition)
+- Annually: replace any limit switch older than 5 years or showing wear
+
+=== MEASUREMENT REFERENCE TABLE ===
+Parameter               | Normal (Not Activated) | Normal (Activated)
+------------------------|------------------------|--------------------
+NC contact resistance   | 0.1–1.0 Ω             | >1 MΩ (open circuit)
+Activation force        | Per OEM spec          | N/A
+Clearance to hoist body | >300 mm at activation | N/A
+Travel stop distance    | >200 mm before buffer | N/A

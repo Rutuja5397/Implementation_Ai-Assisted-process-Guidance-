@@ -1,0 +1,111 @@
+COMPONENT: Hoist Brake
+DOCUMENT TYPE: Maintenance and Troubleshooting Manual
+APPLIES TO: Demag EKKE 5t, Liebherr Tower Crane, Generic Overhead Crane
+
+=== OVERVIEW ===
+The hoist brake is a fail-safe electromagnetic disc or shoe brake mounted on the motor shaft. It applies automatically when power is removed (spring-applied, electrically-released principle). The brake must hold 150% of rated load as per EN 14492-2 / FEM standards.
+
+=== TYPES ===
+1. DC Electromagnetic Disc Brake (most common on Demag EKKE)
+   - Coil voltage: 24VDC (supplied via half-wave or full-wave rectifier from 230VAC)
+   - Spring-applied, electromagnet-released
+   - Air gap: 0.15–0.4 mm (nominal 0.2–0.3 mm)
+
+2. AC Electromagnetic Shoe Brake
+   - Coil voltage: 230VAC or 400VAC
+   - Releases when energised
+
+=== ELECTRICAL SPECIFICATIONS ===
+- DC brake coil resistance: typically 20–100 Ω (check nameplate)
+- Coil voltage tolerance: ±10% of rated voltage
+- Release time: <100 ms
+- Engagement time (spring): <150 ms
+- Rectifier output (no-load): ~24–32 VDC
+- Min. holding voltage: 0.7 × rated (for DC types)
+
+=== COMMON FAILURE MODES ===
+
+1. BRAKE DOES NOT RELEASE (Load does not lift; motor strains)
+   Causes:
+   - Brake coil no voltage supply
+   - Rectifier failure (AC to DC conversion failed)
+   - Coil burnt out (open circuit)
+   - Air gap too large (exceeds maximum)
+   - Brake disc seized/corroded (outdoor use)
+   - Control relay or contactor not energising brake circuit
+
+   Diagnostic steps:
+   a. Measure voltage at brake coil terminals:
+      - With motor running: should read rated DC voltage (e.g., 24VDC ±10%)
+      - If 0V → check rectifier input, fuse, and control circuit
+   b. Measure rectifier output with motor running
+      - AC input to rectifier: 230VAC ±10%
+      - DC output: ~24–32 VDC (check polarity)
+   c. Measure brake coil resistance (motor OFF, disconnected):
+      - Open circuit → coil burnt, replace brake
+      - Short circuit (<5Ω for 24V coil) → coil shorted, replace brake
+   d. Measure air gap with feeler gauge at 3 points around disc
+      - If gap > 0.5 mm → adjust or replace brake disc
+   e. Manual release test: engage manual brake release lever (if fitted)
+      - If load lifts when manually released → electrical/control issue confirmed
+
+2. BRAKE DOES NOT ENGAGE (Load drifts when stopped – SAFETY CRITICAL)
+   Causes:
+   - Spring broken or fatigued (reduced spring force)
+   - Brake disc worn below minimum thickness
+   - Oil or grease contamination of brake disc/pad
+   - Air gap too small (disc drag during operation)
+   - Coil not de-energising (stuck contactor)
+
+   Diagnostic steps:
+   a. Load drift test: slowly lower rated load, release pendant – does load stop?
+   b. Measure brake coil voltage with motor off:
+      - Should be 0V → if voltage remains, contactor is stuck closed
+   c. Check disc thickness (caliper measurement):
+      - Minimum disc thickness: typically 6–8 mm (check OEM data)
+      - Minimum pad thickness: 3 mm
+   d. Check for oil contamination (visual on disc friction surface)
+   e. Static holding test: hang 150% rated load, brake engaged – must hold
+
+3. BRAKE OVERHEATING / BURNING SMELL
+   Causes:
+   - Brake dragging (partial release, air gap too small)
+   - Excessive duty cycle
+   - Coil overvoltage
+
+   Diagnostic steps:
+   a. Check coil voltage does not exceed 110% rated
+   b. Measure air gap – if <0.1 mm, disc rubbing continuously
+   c. Check surface temperature of brake housing (normal <80°C in operation)
+
+4. ABNORMAL NOISE (Clicking, chattering, grinding)
+   Causes:
+   - Worn armature plate (chattering = AC hum)
+   - Loose brake mounting
+   - Disc runout excessive (grinding)
+
+=== MEASUREMENT REFERENCE TABLE ===
+Parameter                | Normal Range         | Action Threshold
+-------------------------|---------------------|------------------
+Brake Coil Voltage (DC)  | 21.6–26.4V (24V nom)| <20V → Adjust/check rectifier
+Coil Resistance          | Per OEM spec ±10%   | Open/short → Replace immediately
+Air Gap                  | 0.2–0.3 mm          | >0.45 mm → Adjust; >0.5 mm → Replace
+Disc Thickness           | >6 mm (OEM min)     | <4 mm → Replace disc
+Brake Housing Temp       | <80°C               | >100°C → Stop, investigate drag
+Static Hold (% rated)    | 150% load held      | Any drift → STOP, DO NOT USE
+
+=== ADJUSTMENT PROCEDURE (Air Gap) ===
+1. De-energise entire crane (LOTO)
+2. Remove protective cover
+3. Measure air gap at 3 points (120° apart) with feeler gauge
+4. Adjust via brake adjustment nuts/screws (OEM-specific)
+5. Target: 0.2–0.3 mm uniform gap
+6. Manually actuate brake several times to verify smooth operation
+7. Restore power, perform no-load test
+
+=== DEMAG EKKE 5t SPECIFIC NOTES ===
+- Brake type: KFB integrated electromagnetic disc brake
+- Nominal torque: 6–16 Nm (dependent on motor size)
+- Coil: 24VDC via full-wave rectifier module (mounted in control box)
+- Air gap nominal: 0.2 mm; Max: 0.4 mm
+- Replacement interval: disc replacement at >0.5 mm gap or visible scoring

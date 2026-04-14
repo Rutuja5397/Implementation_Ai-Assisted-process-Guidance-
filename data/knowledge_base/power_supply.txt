@@ -1,0 +1,74 @@
+COMPONENT: Power Supply (Main Supply, Busbar, Cable Reel, Festoon)
+DOCUMENT TYPE: Maintenance and Troubleshooting Manual
+APPLIES TO: Overhead Cranes with Fixed or Travelling Power Supply
+
+=== OVERVIEW ===
+The crane power supply delivers three-phase (and control voltage) to the crane from a fixed supply point to the travelling crane. Common methods: rigid busbars/conductor rails, cable reel systems, or festoon cable systems. Faults in the power supply cause crane-wide failures, intermittent faults, or voltage drop issues.
+
+=== POWER SUPPLY TYPES ===
+1. Conductor Rail (Busbar): Copper or aluminium conductors mounted along runway; sliding collectors on crane
+2. Cable Festoon: Cables hung from festoon carriers; moves with bridge/trolley
+3. Cable Reel: Spring-wound or motorised drum pays out/rewinds cable as crane travels
+4. Busduct (enclosed busbar): Fully enclosed, higher IP rating
+
+=== COMMON FAILURE MODES ===
+
+1. COMPLETE POWER LOSS (Crane dead)
+   Causes:
+   - Supply breaker tripped at substation
+   - Conductor rail break or gap misalignment
+   - Main cable failure (cut, overheated, short circuit)
+   - Cable reel internal break
+
+   Diagnostic steps:
+   a. Check supply at panel incoming terminals: 3-phase voltage present?
+   b. Check busbar/conductor rail current collectors for contact condition
+   c. Measure voltage at crane panel with crane in different positions along runway
+   d. Check cable reel: any cable damage visible at drum entry point?
+
+2. INTERMITTENT POWER (Crane cuts out while travelling)
+   Causes:
+   - Conductor rail collector spring worn (poor contact)
+   - Conductor rail gap or misalignment at joint
+   - Festoon cable tangling or snagging
+   - Cable reel slip ring fault (arcing at slip ring contact)
+
+   Diagnostic steps:
+   a. Note: Does fault occur at specific position on runway? → Rail gap or joint issue
+   b. Does fault occur when crane starts moving? → Collector or festoon issue
+   c. Inspect conductor rail collector shoes: wear, spring pressure
+   d. Check rail joints: continuity across joints, physical alignment
+
+3. VOLTAGE DROP (Crane operates slowly, motors run hot)
+   Causes:
+   - Undersized conductors for long span
+   - Poor connections (high resistance joints)
+   - Corroded busbar surface
+
+   Diagnostic steps:
+   a. Measure voltage at crane panel input with full load operating
+   b. Compare to supply voltage at substation → voltage drop = (V_source - V_crane)
+   c. Acceptable voltage drop: maximum 5% of rated voltage under full load
+   d. >5% drop → check connections, conductor condition, conductor sizing
+
+4. EARTH FAULT / INSULATION FAILURE
+   Causes:
+   - Cable insulation aged or damaged
+   - Moisture ingress to terminal connections
+   - Collector contamination (conductive dust bridging phases or to earth)
+
+   Diagnostic steps:
+   a. Earth fault indicator (if fitted) or RCD/GFCI trip
+   b. Insulation resistance test (500V DC megger) on power supply conductors
+   c. Minimum acceptable: 1 MΩ phase-to-earth
+   d. Isolate sections to identify fault location
+
+=== MEASUREMENT REFERENCE TABLE ===
+Parameter               | Normal              | Action Threshold
+------------------------|---------------------|------------------
+Incoming voltage        | 380–415V (±5%)      | <361V or >436V
+Voltage drop under load | <5% of rated        | >5% → investigate supply
+Phase imbalance         | <2%                 | >3% → investigate supply
+Insulation resistance   | >1 MΩ               | <1 MΩ → do not energise
+Collector contact force | Per OEM spec        | Reduced → adjust/replace spring
+Earth leakage current   | <30 mA (typical RCD)| RCD trips → find fault

@@ -1,0 +1,95 @@
+DOCUMENT: General Crane Maintenance Procedures and Safety
+DOCUMENT TYPE: General Reference Manual
+APPLIES TO: All Overhead Cranes
+
+=== LOCKOUT/TAGOUT (LOTO) PROCEDURE ===
+MANDATORY before any maintenance work on crane:
+
+1. Notify all affected personnel
+2. Identify all energy sources (electrical, hydraulic, pneumatic, stored mechanical)
+3. Switch off main isolator on crane panel
+4. Apply personal padlock to isolator
+5. Attach danger tag with name, date, reason
+6. Test: attempt to start crane (pendant or radio) → must not respond
+7. Verify voltage at motor terminals: 0V on all phases
+8. Commence maintenance work
+9. After work: remove tools and personnel, then remove lock/tag
+10. Document in maintenance log
+
+Multiple workers: EACH worker applies their own lock (multi-lock hasp)
+
+=== PRE-SHIFT INSPECTION CHECKLIST ===
+Operator must check before first use of shift:
+□ Wire rope: visible damage, kinks, correct reeving
+□ Hook: throat opening within tolerance, safety latch functions
+□ Pendant/remote: all buttons function correctly, cable not damaged
+□ Upper limit switch: test by raising hook until limit activates
+□ Brakes: test stop function (short travel with no load)
+□ Structure: visible cracks, deformed members, loose bolts
+□ Rail: clear of obstruction, no visible damage
+□ Load test: no-load run in all axes before lifting
+
+=== LOAD TESTING REQUIREMENTS ===
+- After major repair or component replacement: 100% load test minimum
+- After structural repair: 110% overload test with static hold (10 minutes)
+- Brake testing: 150% static hold after any brake work
+- Annual inspection: 100% load test required by EN 13001 and national standards
+- New installation: full proof load test per design specification
+
+=== ENVIRONMENTAL OPERATING LIMITS ===
+- Temperature:
+  - Standard motors: -20°C to +40°C (derate above 40°C)
+  - Cold store cranes: special low-temp lubrication and heaters required
+  - High temp (foundry): special motor class, refractory coatings
+- Humidity: >90% RH → enhanced corrosion protection, IP65+ required
+- Dust: Class M or H environments → sealed motors, filtered panels, regular cleaning
+- Explosive atmosphere: ATEX-rated components required (do not use standard equipment)
+
+=== FAULT DOCUMENTATION STANDARD ===
+Each fault/maintenance event should record:
+1. Date and time
+2. Crane ID and location
+3. Symptom (observed behaviour)
+4. Measurements taken (voltage, current, temperature, etc.)
+5. Root cause identified
+6. Action taken (repair, replacement, adjustment)
+7. Parts replaced (part number, serial if known)
+8. Post-repair test result
+9. Technician name and signature
+10. Next action required (if any)
+
+=== COMPETENCY REQUIREMENTS ===
+- Routine inspection: Trained crane operator
+- Electrical testing: Qualified electrician (country-specific certification)
+- Load testing after repair: Competent person (crane engineer or appointed inspector)
+- Structural inspection: Qualified crane engineer
+- NDT (magnetic particle, dye-penetrant): Certified NDT technician
+
+=== COMMON CRANE ERROR CODES (GENERIC PLC) ===
+E01 – Overload relay tripped (motor overcurrent)
+E02 – Phase loss detected
+E03 – Emergency stop activated
+E04 – Upper hoist limit reached
+E05 – Lower hoist limit reached
+E06 – Bridge end limit (left)
+E07 – Bridge end limit (right)
+E08 – Trolley end limit
+E09 – Motor thermal trip (PTC thermistor)
+E10 – Control voltage loss
+E11 – Anti-collision sensor activated
+E12 – Overload protection (load cell >100% rated)
+E13 – Communication fault (radio remote or PLC)
+E14 – Brake release fault (brake current feedback missing)
+
+=== SPARE PARTS MANAGEMENT ===
+Critical spares to maintain on-site:
+- Brake coil assembly (matched to installed brake)
+- Brake disc and friction pads
+- Contactor set (matching current rating)
+- Overload relay
+- Control fuses (all ratings used)
+- Wire rope (1 drum length, matching specification)
+- Limit switches (matching types installed)
+- Rectifier module for brake supply
+- Motor bearings (matched to installed motors)
+- Oil (correct grade for gearboxes)

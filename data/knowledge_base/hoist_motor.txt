@@ -1,0 +1,105 @@
+COMPONENT: Hoist Motor
+DOCUMENT TYPE: Maintenance and Troubleshooting Manual
+APPLIES TO: Demag EKKE 5t, Liebherr Tower Crane, Generic Overhead Crane
+
+=== OVERVIEW ===
+The hoist motor drives the lifting drum to raise and lower loads. It is typically a three-phase asynchronous motor with integrated thermal protection. Proper voltage supply, adequate cooling, and mechanical alignment are critical for reliable operation.
+
+=== ELECTRICAL SPECIFICATIONS ===
+- Rated voltage: 380-415V AC (3-phase, 50 Hz) or 460-480V AC (60 Hz variants)
+- Insulation class: F (155°C) or H (180°C)
+- Protection class: IP55 minimum (dusty/outdoor environments: IP65)
+- Starting current: 5–7× rated full-load current (FLA)
+- Duty cycle: S3 (intermittent) – typically 40% or 60% CDF (cyclic duration factor)
+- Locked rotor current: ≤ 600% of FLA
+
+NAMEPLATE VALUES TO CHECK:
+- FLA (Full Load Amps): Compare running current; >110% FLA indicates overload
+- Power factor (cosφ): Typical 0.7–0.85 at full load
+- Insulation resistance: Minimum 1 MΩ at 500V DC (new: >100 MΩ)
+
+=== COMMON FAILURE MODES ===
+
+1. MOTOR FAILS TO START
+   Causes:
+   - Loss of one phase (single-phasing) → motor hums, overheats quickly
+   - Overload relay tripped
+   - Control fuse blown
+   - Motor thermistor (PTC) triggered due to overtemperature
+   - Contactor contact failure
+   - Brake not releasing (mechanical lock)
+
+   Diagnostic steps:
+   a. Check supply voltage on all 3 phases at motor terminals (should be within ±5% of rated)
+   b. Check overload relay status – reset if tripped; investigate root cause before restart
+   c. Verify contactor closes fully (check coil voltage: typically 24VDC or 230VAC)
+   d. Measure motor winding resistance (should be balanced ±5% between phases)
+   e. Check motor thermistor continuity (PTC open = thermistor triggered)
+
+2. MOTOR OVERHEATING (Thermal trip, body >90°C)
+   Causes:
+   - Overload (excessive load, stuck mechanism)
+   - Ambient temperature >40°C without derating
+   - Blocked cooling fan or dirty fins
+   - Voltage imbalance >2% between phases
+   - Motor running in wrong direction (phase reversal)
+   - Excessive duty cycle beyond rated CDF
+   - Bearing failure causing increased friction
+
+   Diagnostic steps:
+   a. Measure winding temperature using IR thermometer on motor housing
+   b. Check voltage balance: Imbalance% = (Max deviation from average / Average) × 100
+   c. Verify cooling fan rotation and fin cleanliness
+   d. Check ambient temperature and ventilation
+   e. Measure running current vs. nameplate FLA on all phases
+
+   Thermal limits:
+   - Winding temperature rise: max 80K above ambient (Class F)
+   - Motor housing surface: typically <90°C (touch test: hold 5 seconds max)
+
+3. ABNORMAL VIBRATION / NOISE
+   Causes:
+   - Bearing damage (grinding/rumbling noise, high vibration)
+   - Rotor imbalance (continuous hum with cyclic vibration)
+   - Loose mounting bolts
+   - Coupling misalignment
+   - Debris ingress into motor
+
+   Diagnostic steps:
+   a. Measure vibration amplitude at bearing housings (normal: <2.8 mm/s RMS per ISO 10816)
+   b. Check coupling alignment: radial and angular misalignment <0.1 mm
+   c. Inspect motor mounting bolts for tightness
+   d. Listen for change in noise pitch with load variation
+
+4. MOTOR RUNS BUT LOAD DOES NOT LIFT
+   Causes:
+   - Brake not releasing
+   - Gearbox failure
+   - Coupling shear pin failure
+   - Drum shaft key failure
+
+=== MEASUREMENT REFERENCE TABLE ===
+Parameter               | Normal Range          | Action Threshold
+------------------------|----------------------|------------------
+Supply Voltage (3-ph)   | 380–415V (±5%)       | <361V or >436V → Stop
+Phase Imbalance         | <2%                  | >3% → Investigate immediately
+Running Current         | ≤100% FLA            | >110% FLA → Reduce load
+Insulation Resistance   | >1 MΩ (500V DC test) | <1 MΩ → Do not energise
+Winding Resistance      | Balanced ±5%         | >10% imbalance → Rewinding needed
+Vibration (bearing)     | <2.8 mm/s RMS        | >4.5 mm/s RMS → Replace bearing
+Motor Housing Temp      | <70°C                | >90°C → Stop immediately
+
+=== MAINTENANCE SCHEDULE ===
+- Weekly: Visual inspection, check for unusual noise
+- Monthly: Check mounting bolts, clean cooling fins
+- 6-Monthly: Grease bearings (if re-greasing type), check coupling
+- Annual: Full electrical check (insulation resistance, winding balance), bearing inspection
+- 5-Year: Full motor rewind assessment
+
+=== DEMAG EKKE 5t SPECIFIC NOTES ===
+- Motor type: KBF-series asynchronous motor with integrated brake
+- Rated power: 1.5–5.5 kW depending on variant
+- Brake coil supply: 24VDC (rectified from 230VAC)
+- Thermistor type: PTC (100-110°C trip point)
+- Bearing type: 6205/6206 deep groove (both ends)
+- Standard duty: FEM 2m (S3-25%)

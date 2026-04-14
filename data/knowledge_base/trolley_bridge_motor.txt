@@ -1,0 +1,67 @@
+COMPONENT: Trolley Motor / Bridge Motor (Travel Drives)
+DOCUMENT TYPE: Maintenance and Troubleshooting Manual
+APPLIES TO: Overhead Crane Trolley and Bridge Travel Mechanisms
+
+=== OVERVIEW ===
+Travel motors drive the horizontal movement of the crane – the trolley moves the load transversely (cross-travel), and the bridge moves longitudinally (long-travel). Both are typically pole-changing asynchronous motors with foot-mounted or flange-mounted construction, driving through a gearbox to drive wheels.
+
+=== TYPICAL SPECIFICATIONS ===
+- Motor type: Pole-changing 4/16-pole (2-speed) or VFD-controlled single-speed
+- Speeds: 2-speed (slow/fast) or stepless (with VFD)
+- Duty cycle: S3-25% to S3-40% (intermittent travel)
+- Brake: Integral or gearbox-mounted (same principles as hoist brake)
+- Drive wheel diameter: 100–400 mm depending on crane size
+- Wheel base and runway gauge: must match girder/runway design
+
+=== COMMON FAILURE MODES ===
+
+1. CRANE/TROLLEY DOES NOT TRAVEL IN ONE OR BOTH DIRECTIONS
+   Causes:
+   - Travel limit switch activated (end-of-travel)
+   - Direction contactor failure
+   - Drive wheel locked (brake not releasing)
+   - Motor overload trip
+
+   Diagnostic steps:
+   a. Check if motion is blocked in both directions or only one
+   b. Both blocked: check main motor fuse, overload relay, motor thermal trip
+   c. One direction only: check contactor for that direction, travel limit switch
+   d. Can wheels be turned by hand? If not → brake issue
+
+2. CRANE SKEWING / DIAGONAL TRAVEL
+   Causes (bridge travel only):
+   - One end-drive motor failed (single-girder: one motor per end)
+   - Drive wheel worn flat on one side
+   - Rail misalignment (check runway alignment)
+   - Speed controller difference between two end motors
+
+   Diagnostic steps:
+   a. Observe bridge movement: does it move diagonally?
+   b. Check both end-drive motors are running (current on both sides)
+   c. Check wheel flanges for wear (flange touching rail = skew)
+   d. Measure drive wheel diameter on both ends (wear causes speed difference)
+
+3. TRAVEL SPEED PROBLEMS
+   Causes:
+   - VFD parameter error or fault
+   - Speed selector switch fault (2-speed motor: only one speed available)
+   - Brake drag (partial engagement causes speed reduction)
+
+   Diagnostic steps:
+   a. VFD: check fault display on VFD panel
+   b. 2-speed motor: verify correct poles selected (4-pole = fast, 16-pole = slow)
+   c. Check brake release confirmation signal
+
+4. DRIVE WHEEL WEAR / RAIL WEAR
+   - Inspect wheel flange thickness monthly
+   - Wheel flat spots cause impact loading and vibration
+   - Rail gauge wear: check rail width at multiple points
+
+=== MEASUREMENT REFERENCE TABLE ===
+Parameter              | Normal               | Action Threshold
+-----------------------|----------------------|------------------
+Running Current        | ≤100% FLA            | >110% FLA → Investigate
+Travel Speed (full)    | Per design ±5%       | >±10% → Check gearbox/brake
+Wheel Flange Thickness | Per OEM min (typ 20mm)| <15 mm → Replace wheel
+Rail Wear (width)      | Nominal ±2 mm        | >±4 mm → Replace rail section
+Brake operation        | Same as hoist brake  | See hoist_brake.txt

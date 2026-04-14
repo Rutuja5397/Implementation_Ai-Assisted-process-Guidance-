@@ -1,0 +1,101 @@
+COMPONENT: Wire Rope
+DOCUMENT TYPE: Inspection and Replacement Manual
+APPLIES TO: Overhead Cranes, Tower Cranes, All Wire Rope Hoist Systems
+
+=== OVERVIEW ===
+Wire rope is a safety-critical load-bearing component. Regular inspection per EN 13001-3-2, ISO 4309, and ASME B30.2 is mandatory. Wire rope must be discarded before reaching discard criteria to prevent catastrophic failure.
+
+=== CONSTRUCTION TYPES ===
+- 6×19 (6 strands, 19 wires per strand) – General hoist use
+- 6×36 (6 strands, 36 wires per strand) – Better fatigue resistance, more flexible
+- 8×19, 8×36 – Multi-layer drum applications
+- Rotation-resistant (18×7, 19×7) – Tower cranes, single fall reeving
+
+=== INSPECTION CRITERIA (Per ISO 4309) ===
+
+DISCARD CRITERIA – MANDATORY REPLACEMENT if ANY of the following:
+
+1. BROKEN WIRES
+   - 6×19 rope: 6 broken wires in 1 rope lay length, or 3 in one strand
+   - 6×36 rope: 14 broken wires in 1 rope lay length, or 7 in one strand
+   - Any broken wire near end fitting: immediate discard
+   - Fatigue breaks (square ends): more serious than abrasive breaks (tapered ends)
+
+2. DIAMETER REDUCTION
+   - Nominal diameter reduction >5% (measured with calibrated calipers)
+   - Example: 10 mm rope → discard at ≤9.5 mm
+   - Check at multiple points (drum contact zones, sheave contact zones)
+   - Internal corrosion may cause diameter reduction before visual wire breaks appear
+
+3. KINKING / DEFORMATION
+   - Any visible kink (permanent bend) → immediate discard
+   - Bird-caging (outer strands separated from core) → immediate discard
+   - Core protrusion → immediate discard
+   - Crushing deformation
+
+4. CORROSION
+   - Internal corrosion (rattling sound when rope bent; stiff, reduced diameter) → discard
+   - Surface rust: light surface rust acceptable if wire surface unaffected
+   - Pitting corrosion on individual wires → discard
+
+5. HEAT DAMAGE
+   - Any evidence of arc burns, welding spatter, or heat discolouration → discard
+   - Rope that has been in fire → discard
+
+=== INSPECTION PROCEDURE ===
+Frequency:
+- Before each shift: visual check of accessible length
+- Monthly: detailed inspection of full rope length
+- Annually: independent inspection by competent person
+- After shock loading or incident: full inspection immediately
+
+Procedure:
+1. Unspool rope from drum (if possible) or traverse hook to expose all sections
+2. Clean rope with wire brush (do not use solvents that strip lubrication)
+3. Inspect under good lighting; use magnifying glass for wire breaks
+4. Measure diameter at: drum first wrap, last wrap, and at each sheave contact point
+5. Flex rope by hand to check for stiffness (indicates core corrosion)
+6. Record all findings on inspection form with date, length markers, and photographs
+
+=== LUBRICATION ===
+- Rope should be lubricated per manufacturer schedule (typically 3–6 months)
+- Use penetrating rope lubricant (not heavy grease that blocks internal penetration)
+- Lubricant should penetrate to core
+- Over-lubrication: excessive buildup attracts dirt → abrasive wear
+- Dry rope: accelerated fatigue and corrosion
+
+=== ROPE INSTALLATION ===
+- Direction of lay must match drum winding direction
+- Minimum 3 dead turns on drum at lowest hook position
+- Rope end termination: swaged socket (factory), wedge socket, or wire rope clip
+- Wire rope clips: minimum 3 clips, correct orientation (U-bolt on dead end), torque to spec
+- After installation: load test at 10% capacity, inspect, then full capacity test
+
+=== SHEAVE INSPECTION ===
+- Sheave groove radius = 0.53–0.55 × rope diameter (too small = pinching; too large = rope distortion)
+- Check for groove wear (use sheave gauge template)
+- Sheave bearing: check for rough rotation, side play
+
+=== HOOK BLOCK WEIGHT AND REEVING ===
+- Single fall (1 rope): maximum for small hoists <2t
+- Double fall (2 ropes): standard for 2–10t
+- Multiple fall: larger capacities
+
+=== MEASUREMENT REFERENCE TABLE ===
+Parameter              | Acceptable            | Discard Threshold
+-----------------------|-----------------------|------------------
+Diameter (vs nominal)  | ≥95% of nominal       | <95% of nominal
+Wire breaks (6×19)     | 0–5 per lay length    | ≥6 per lay length
+Wire breaks (6×36)     | 0–13 per lay length   | ≥14 per lay length
+Kink / deformation     | None                  | Any visible kink
+Surface corrosion      | Light surface rust    | Pitting or internal corrosion
+Rope stiffness         | Flexible throughout   | Rigid sections → internal damage
+End fitting integrity  | No cracks, full seating| Any crack or partial seating
+
+=== RECORD KEEPING ===
+Each wire rope must have an individual record:
+- Installation date
+- Rope type, diameter, length, and grade
+- Drum and sheave details
+- All inspection dates and findings
+- Discard date and reason

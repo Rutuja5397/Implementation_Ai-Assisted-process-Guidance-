@@ -1,0 +1,29 @@
+# Secrets
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Database (runtime data, not source)
+crane_ai.db
+
+# ChromaDB vector store (regenerated from knowledge base on startup)
+chroma_db/
+
+# macOS
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logs
+*.log
