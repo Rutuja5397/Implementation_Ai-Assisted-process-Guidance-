@@ -629,6 +629,25 @@ def flag_knowledge_gap(
     )
     db.add(gap)
     db.commit()
+    db.refresh(gap)
+
+    # Notify all KE users that a new knowledge gap needs attention
+    ke_users = db.query(models.User).filter(
+        models.User.role == "KE",
+        models.User.is_active == True,  # noqa: E712
+    ).all()
+    for ke_user in ke_users:
+        db.add(models.Notification(
+            user_id=ke_user.id,
+            gap_id=gap.id,
+            session_id=session.id,
+            message=(
+                f"New knowledge gap flagged by {current_user.name or current_user.username} "
+                f"for component '{session.component}'. "
+                f"Session #{session.id} — please review and update the knowledge base."
+            ),
+        ))
+    db.commit()
 
     _write_audit(db, current_user.id, "knowledge_gap_flagged", "session", str(session.id))
     return {
