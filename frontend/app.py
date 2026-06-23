@@ -306,7 +306,9 @@ def _landing_screen_for_role(role: str) -> str:
     """Which screen to land on after login."""
     if role == "KE":
         return "knowledge_gaps"
-    if role in ("SUP", "ADM"):
+    if role == "ADM":
+        return "admin"
+    if role == "SUP":
         return "dashboard"
     return "intake"   # ME, SME
 
@@ -371,7 +373,8 @@ def render_top_bar():
             nav_buttons = []
             if _has_role("ME"):
                 nav_buttons.append(("📋 New Issue", "intake"))
-            nav_buttons.append(("📊 Dashboard", "dashboard"))
+            if not _has_role("ADM"):
+                nav_buttons.append(("📊 Dashboard", "dashboard"))
             if _has_role("SME"):
                 nav_buttons.append(("📥 SME Inbox", "sme_inbox"))
             if _has_role("KE", "SME"):
