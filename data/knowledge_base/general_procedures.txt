@@ -93,3 +93,17 @@ Critical spares to maintain on-site:
 - Rectifier module for brake supply
 - Motor bearings (matched to installed motors)
 - Oil (correct grade for gearboxes)
+
+
+
+
+=== KNOWLEDGE UPDATE (2026-04-25 — added by KE: Demo KE) ===
+Multimeter should be avilable in oerder to measure the voltage
+=== END UPDATE ===
+
+
+
+
+=== KNOWLEDGE UPDATE (2026-04-27 — added by KE: Demo KE) ===
+Safety-critical maintenance procedures for wire rope systems must be carried out exclusively by competent personnel with appropriate training and experience, in accordance with standards such as EN 13001 and applicable local regulations. In cases of suspected rope damage, a comprehensive inspection is required, including measurement of wire breaks, evaluation of diameter reduction, and examination of the entire rope length, including drum wraps and termination points. Additionally, associated components such as drum grooves, sheaves, and rope anchor points must be inspected for any secondary damage. If defects are confirmed, rope replacement must be performed using the correct specification, ensuring proper installation and pre-load commissioning. Finally, a post-installation inspection and formal sign-off are mandatory before the crane can be safely returned to service.
+=== END UPDATE ===

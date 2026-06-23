@@ -1,0 +1,164 @@
+@startuml sequence_troubleshooting_escalation
+title Sequence Diagram: Diagnostic Chat Turn → Escalation → SME Review
+
+skinparam sequence {
+  ActorBackgroundColor #DDEEFF
+  ActorBorderColor #2255AA
+  ParticipantBackgroundColor #F0F0FF
+  ParticipantBorderColor #333366
+  DatabaseBackgroundColor #FFFACC
+  DatabaseBorderColor #887700
+  LifeLineBorderColor #AAAAAA
+  ArrowColor #333333
+  BoxBackgroundColor #FAFAFA
+  BoxBorderColor #AAAAAA
+}
+
+actor "Maintenance\nEngineer" as ME
+participant "Streamlit\nFrontend" as FE
+participant "FastAPI\nBackend" as API
+participant "Session\nOrchestrator\n(AGT-01)" as ORCH
+participant "Retrieval\nAgent\n(AGT-03)" as RA
+participant "Parameter\nAgent\n(AGT-05)" as PA
+participant "Diagnostic\nAgent\n(AGT-04)" as DA
+participant "Safety\nAgent\n(AGT-07)" as SA
+database "SQLite\nDatabase" as DB
+participant "Anthropic\nAPI" as ANTHRO
+actor "Senior Engineer\n(SME)" as SME
+
+== Part 1: Diagnostic Chat Turn ==
+
+ME -> FE : types observation,\nclicks Send
+activate FE
+FE -> API : POST /sessions/{id}/chat\n{message, Authorization: Bearer JWT}
+activate API
+
+API -> API : validate JWT signature\ncheck role ∈ {ME, SME}
+
+API -> ORCH : handle_chat_turn(session_id, message, user)
+activate ORCH
+
+ORCH -> DB : SELECT session + messages\n+ measurements + state
+activate DB
+DB --> ORCH : session snapshot
+deactivate DB
+
+ORCH -> RA : retrieve(component_key,\nquery=component+problem+message)
+activate RA
+RA -> RA : component-filtered query\n(top 3, where source=component)
+RA -> RA : general corpus query\n(top 2, full collection)
+RA -> RA : deduplicate + rank by score
+RA --> ORCH : evidence_chunks[≤5]
+deactivate RA
+
+alt new measurements recorded since last turn
+  ORCH -> PA : annotate(measurements, component_key)
+  activate PA
+  PA -> PA : compare each value to\nreference range in parameter_specs
+  PA --> ORCH : annotated_measurements
+  deactivate PA
+end
+
+ORCH -> ORCH : assemble system_prompt:\n  - context snapshot\n  - retrieved evidence\n  - annotated measurements\n  - session state\n  - role instructions
+
+ORCH -> DA : respond(system_prompt,\nconversation_history)
+activate DA
+DA -> ANTHRO : POST /messages\n{model, messages, max_tokens}
+activate ANTHRO
+ANTHRO --> DA : {content: response_text\n+ embedded session_update JSON}
+deactivate ANTHRO
+DA --> ORCH : {response_text, session_update:\n  completed_steps, likely_causes,\n  current_hypothesis,\n  probable_cause_flag,\n  unresolved_flag,\n  safety_concern_flag}
+deactivate DA
+
+ORCH -> SA : evaluate(response_text, session_state)
+activate SA
+alt safety-critical condition detected
+  SA -> SA : match against safety rules\n(brake_gap, insulation, overload…)
+  SA --> ORCH : {safety_flag: true,\nsafety_level: CRITICAL,\nmodified_response: [ALERT + original]}
+  note over ORCH : prepend CRITICAL safety block\nto response
+else no safety issue
+  SA --> ORCH : {safety_flag: false,\nmodified_response: original}
+end
+deactivate SA
+
+ORCH -> DB : INSERT message (user)
+ORCH -> DB : INSERT message (assistant)
+ORCH -> DB : UPDATE session:\n  completed_steps,\n  likely_causes,\n  current_hypothesis,\n  lifecycle_state (if flagged)
+ORCH -> DB : INSERT audit_log event
+
+ORCH --> API : {ai_response, safety_flag,\nevidence_chunks, session_state}
+deactivate ORCH
+
+API --> FE : HTTP 200 JSON response
+deactivate API
+
+FE -> ME : render assistant message\nin chat panel
+FE -> ME : update Evidence panel\n(source chunks + scores)
+FE -> ME : update Session State panel\n(steps, causes, hypothesis)
+deactivate FE
+
+alt safety_flag == true
+  FE -> ME : display CRITICAL safety alert\n(red, above chat)
+end
+
+== Part 2: Engineer Escalates ==
+
+ME -> FE : clicks "Escalate to SME"
+activate FE
+FE -> ME : show escalation reason dialog
+ME -> FE : types escalation reason,\nconfirms
+
+FE -> API : POST /sessions/{id}/escalate\n{reason, Authorization: Bearer JWT}
+activate API
+API -> API : validate JWT\ncheck role == ME
+
+API -> ORCH : handle_escalation(session_id,\nreason, user)
+activate ORCH
+ORCH -> DB : INSERT escalation_record\n(user_id, reason, timestamp)
+ORCH -> DB : INSERT state_transition\n(UNRESOLVED → ESCALATED, user)
+ORCH -> DB : UPDATE session:\n  lifecycle_state = ESCALATED,\n  escalation_reason = reason
+ORCH -> DB : INSERT audit_log event
+ORCH --> API : {success: true, new_state: ESCALATED}
+deactivate ORCH
+
+API --> FE : HTTP 200
+deactivate API
+FE -> ME : "Session escalated to SME"
+deactivate FE
+
+== Part 3: SME Picks Up Escalated Session ==
+
+SME -> FE : opens "Escalated Sessions" tab
+activate FE
+FE -> API : GET /dashboard?filter=escalated\n{SME JWT}
+activate API
+API -> DB : SELECT sessions WHERE\n  state IN (ESCALATED, SME_IN_REVIEW)
+DB --> API : escalated session list
+API --> FE : sessions with escalation notes
+deactivate API
+FE -> SME : display escalated sessions list
+deactivate FE
+
+SME -> FE : clicks "Open for Review"
+activate FE
+FE -> API : POST /sessions/{id}/start-sme-review\n{SME JWT}
+activate API
+API -> API : validate JWT\ncheck role == SME
+
+API -> ORCH : handle_sme_review_start(session_id, sme)
+activate ORCH
+ORCH -> DB : INSERT state_transition\n(ESCALATED → SME_IN_REVIEW, SME)
+ORCH -> DB : UPDATE session:\n  lifecycle_state = SME_IN_REVIEW
+ORCH -> DB : load full session snapshot
+DB --> ORCH : complete session data
+ORCH --> API : full session (history,\nmeasurements, escalation notes)
+deactivate ORCH
+
+API --> FE : HTTP 200 session data
+deactivate API
+FE -> SME : display AI Guidance Interface\nwith full context restored +\nescalation notes visible
+deactivate FE
+
+note over SME : SME continues diagnostic\nconversation using same\nchat turn pipeline (Part 1)\nwith SME role context added\nto system prompt
+
+@enduml

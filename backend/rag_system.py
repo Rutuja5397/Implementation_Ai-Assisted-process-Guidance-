@@ -34,8 +34,8 @@ class RAGSystem:
     """Manages the ChromaDB vector store and retrieval pipeline."""
 
     COLLECTION_NAME = "crane_knowledge"
-    CHUNK_SIZE = 500      # characters per chunk
-    CHUNK_OVERLAP = 100
+    CHUNK_SIZE = 1200     # characters per chunk — large enough to keep procedures intact
+    CHUNK_OVERLAP = 200
 
     def __init__(self):
         chroma_path = os.getenv("CHROMA_DB_PATH", "./chroma_db")
@@ -54,6 +54,20 @@ class RAGSystem:
             path=str(self.chroma_path),
             settings=Settings(anonymized_telemetry=False),
         )
+
+    def reinitialize(self):
+        """
+        Force a full re-index of the knowledge base.
+        Deletes the existing ChromaDB collection and re-creates it from disk.
+        Call this after any knowledge base file has been updated.
+        """
+        try:
+            self.client.delete_collection(self.COLLECTION_NAME)
+            logger.info(f"[RAG] Deleted collection '{self.COLLECTION_NAME}' for re-indexing.")
+        except Exception as exc:
+            logger.warning(f"[RAG] Could not delete collection (may not exist): {exc}")
+        self.initialize()
+        logger.info("[RAG] Knowledge base re-indexed successfully.")
 
     def initialize(self):
         """Load all knowledge base documents into ChromaDB (idempotent)."""

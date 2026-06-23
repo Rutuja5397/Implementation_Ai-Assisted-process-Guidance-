@@ -1,5 +1,7 @@
 """
 Authentication logic: password hashing, JWT token creation and verification.
+Version 2: JWT now carries user_id and role; create_user accepts role field;
+last_login_at is updated on successful authentication.
 """
 
 import os
@@ -12,24 +14,27 @@ from sqlalchemy.orm import Session
 
 from backend import models, schemas
 
-# ─── Config ──────────────────────────────────────────────────────────────────
+# ─── Config ───────────────────────────────────────────────────────────────────
 
 SECRET_KEY = os.getenv("SECRET_KEY", "crane-ai-default-secret-change-me-in-production")
-ALGORITHM = "HS256"
+ALGORITHM  = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "480"))
 
 
-# ─── Password utilities ──────────────────────────────────────────────────────
+# ─── Password utilities ───────────────────────────────────────────────────────
 
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
+    return bcrypt.checkpw(
+        plain_password.encode("utf-8"),
+        hashed_password.encode("utf-8"),
+    )
 
 
-# ─── JWT utilities ───────────────────────────────────────────────────────────
+# ─── JWT utilities ────────────────────────────────────────────────────────────
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
@@ -42,16 +47,19 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 
 def decode_token(token: str) -> Optional[dict]:
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return payload
+        return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except JWTError:
         return None
 
 
-# ─── User CRUD ───────────────────────────────────────────────────────────────
+# ─── User CRUD ────────────────────────────────────────────────────────────────
 
 def get_user_by_username(db: Session, username: str) -> Optional[models.User]:
     return db.query(models.User).filter(models.User.username == username).first()
+
+
+def get_user_by_id(db: Session, user_id: int) -> Optional[models.User]:
+    return db.query(models.User).filter(models.User.id == user_id).first()
 
 
 def create_user(db: Session, user_data: schemas.UserCreate) -> models.User:
@@ -59,6 +67,8 @@ def create_user(db: Session, user_data: schemas.UserCreate) -> models.User:
         username=user_data.username,
         name=user_data.name,
         hashed_password=hash_password(user_data.password),
+        role=user_data.role,   # V2: persist the chosen role
+        is_active=True,
     )
     db.add(db_user)
     db.commit()
@@ -66,12 +76,17 @@ def create_user(db: Session, user_data: schemas.UserCreate) -> models.User:
     return db_user
 
 
-def authenticate_user(db: Session, username: str, password: str) -> Optional[models.User]:
+def authenticate_user(
+    db: Session, username: str, password: str
+) -> Optional[models.User]:
     user = get_user_by_username(db, username)
-    if not user:
+    if not user or not user.is_active:
         return None
     if not verify_password(password, user.hashed_password):
         return None
+    # Stamp last login time
+    user.last_login_at = datetime.utcnow()
+    db.commit()
     return user
 
 
@@ -79,7 +94,24 @@ def get_current_user_from_token(db: Session, token: str) -> Optional[models.User
     payload = decode_token(token)
     if payload is None:
         return None
-    username: str = payload.get("sub")
-    if username is None:
+    # V2: prefer user_id lookup; fall back to username sub for V1 tokens
+    user_id: Optional[int] = payload.get("user_id")
+    if user_id:
+        user = get_user_by_id(db, user_id)
+    else:
+        username: Optional[str] = payload.get("sub")
+        if not username:
+            return None
+        user = get_user_by_username(db, username)
+    if user and not user.is_active:
         return None
-    return get_user_by_username(db, username)
+    return user
+
+
+def build_token_payload(user: models.User) -> dict:
+    """Build the JWT claims dict for a given user (V2 format)."""
+    return {
+        "sub": user.username,
+        "user_id": user.id,
+        "role": user.role,
+    }

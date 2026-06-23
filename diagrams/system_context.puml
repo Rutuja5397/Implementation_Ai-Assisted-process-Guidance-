@@ -1,0 +1,69 @@
+@startuml system_context
+!pragma layout smetana
+
+title AI-Assisted Process Guidance Tool — System Context Diagram
+
+skinparam rectangle {
+  BackgroundColor #F5F5F5
+  BorderColor #444444
+  FontSize 12
+}
+skinparam actor {
+  BackgroundColor #DDEEFF
+  BorderColor #2255AA
+  FontSize 11
+}
+skinparam database {
+  BackgroundColor #FFF5DD
+  BorderColor #AA8800
+  FontSize 11
+}
+skinparam cloud {
+  BackgroundColor #EEFFEE
+  BorderColor #227722
+  FontSize 11
+}
+skinparam note {
+  BackgroundColor #FFFFCC
+  BorderColor #888800
+}
+
+actor "Maintenance\nEngineer\n[ME]" as ME
+actor "Senior Engineer\n/ SME\n[SME]" as SME
+actor "Knowledge\nEngineer\n[KE]" as KE
+actor "Supervisor\n[SUP]" as SUP
+actor "System\nAdministrator\n[ADM]" as ADM
+
+rectangle "AI-Assisted Process Guidance Tool\n[Software System]" as SYSTEM {
+  rectangle "Streamlit Frontend\n[Presentation Layer]" as FE #EEEEFF
+  rectangle "FastAPI Backend\n[Application Layer]" as BE #EEFFF0
+  rectangle "Multi-Agent\nOrchestration Pipeline\n[AI Layer]" as MA #FFEEEE
+}
+
+database "SQLite Database\n[crane_ai.db]" as DB
+database "ChromaDB\nVector Store\n[chroma_db/]" as CDB
+cloud "Anthropic API\n[claude-sonnet-4-6]" as ANTHRO
+rectangle "Knowledge Base\n[.txt documents]" as KB #FFFACC
+
+ME --> FE : log fault, diagnose,\nrecord measurements,\ngenerate report
+SME --> FE : review escalated sessions,\nadd expert annotations
+KE --> FE : review knowledge gaps,\nmonitor unresolved cases
+SUP --> FE : monitor faults,\nview reports,\ntrack trends
+ADM --> FE : manage users,\nassign roles,\nview audit log
+
+FE --> BE : HTTP REST (JSON)\n[JWT-authenticated]
+BE --> MA : invokes agent pipeline\nfor each session request
+MA --> CDB : semantic vector search\n[cosine similarity]
+MA --> ANTHRO : LLM inference\n[chat completions API]
+BE --> DB : read / write\n[SQLAlchemy ORM]
+KB ..> CDB : indexed on startup\n[sentence-transformers]
+
+note bottom of MA
+  9 AI Agents:
+  Intake | Retrieval | Diagnostic Reasoning
+  Parameter Interpretation | Procedure Guidance
+  Safety/Guardrail | Report Generation
+  Knowledge Feedback | Session Orchestrator
+end note
+
+@enduml

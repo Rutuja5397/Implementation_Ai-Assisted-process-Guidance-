@@ -1,0 +1,132 @@
+@startuml use_case
+title AI-Assisted Process Guidance Tool — Use Case Diagram
+
+left to right direction
+
+skinparam usecase {
+  BackgroundColor #EEEEFF
+  BorderColor #333399
+  FontSize 11
+}
+skinparam actor {
+  BackgroundColor #DDEEFF
+  BorderColor #2255AA
+  FontSize 11
+}
+skinparam package {
+  BackgroundColor #FAFAFA
+  BorderColor #AAAAAA
+}
+
+actor "Maintenance\nEngineer\n[ME]" as ME
+actor "Senior Engineer\n/ SME\n[SME]" as SME
+actor "Knowledge\nEngineer\n[KE]" as KE
+actor "Supervisor\n[SUP]" as SUP
+actor "System\nAdministrator\n[ADM]" as ADM
+
+package "Authentication & User Management" {
+  usecase "UC-01: Sign Up" as UC01
+  usecase "UC-02: Log In" as UC02
+  usecase "UC-03: Log Out" as UC03
+  usecase "UC-20: Manage Users & Roles" as UC20
+  usecase "UC-21: View Audit Log" as UC21
+}
+
+package "Fault Intake & Session Management" {
+  usecase "UC-04: Log Fault Issue" as UC04
+  usecase "UC-05: Start Diagnostic Session\n[system]" as UC05
+  usecase "UC-17: Resume Active Session" as UC17
+}
+
+package "AI-Guided Diagnostic Workflow" {
+  usecase "UC-06: Conduct Diagnostic\nConversation" as UC06
+  usecase "UC-07: Record Measurements" as UC07
+  usecase "UC-08: Review Retrieved\nEvidence" as UC08
+}
+
+package "Escalation & Expert Review" {
+  usecase "UC-09: Escalate Issue to SME" as UC09
+  usecase "UC-10: Expert Review by SME" as UC10
+  usecase "UC-11: Add Expert Annotation" as UC11
+  usecase "UC-12: Flag for Knowledge Review" as UC12
+}
+
+package "Reporting & Knowledge Reuse" {
+  usecase "UC-13: Generate Fault Report" as UC13
+  usecase "UC-14: View Own Session History" as UC14
+  usecase "UC-15: View All Sessions" as UC15
+  usecase "UC-16: View Escalated Sessions" as UC16
+  usecase "UC-18: Review Crane History" as UC18
+  usecase "UC-19: View Knowledge Gap Cases" as UC19
+}
+
+' ME permissions
+ME --> UC01
+ME --> UC02
+ME --> UC03
+ME --> UC04
+ME --> UC06
+ME --> UC07
+ME --> UC08
+ME --> UC09
+ME --> UC13
+ME --> UC14
+ME --> UC17
+ME --> UC18
+
+' SME permissions
+SME --> UC01
+SME --> UC02
+SME --> UC03
+SME --> UC04
+SME --> UC06
+SME --> UC07
+SME --> UC08
+SME --> UC10
+SME --> UC11
+SME --> UC12
+SME --> UC13
+SME --> UC14
+SME --> UC15
+SME --> UC16
+SME --> UC17
+SME --> UC18
+SME --> UC19
+
+' KE permissions
+KE --> UC01
+KE --> UC02
+KE --> UC03
+KE --> UC18
+KE --> UC19
+
+' SUP permissions
+SUP --> UC01
+SUP --> UC02
+SUP --> UC03
+SUP --> UC15
+SUP --> UC16
+SUP --> UC18
+SUP --> UC21
+
+' ADM permissions
+ADM --> UC01
+ADM --> UC02
+ADM --> UC03
+ADM --> UC20
+ADM --> UC21
+
+' Include relationships
+UC04 .> UC05 : <<include>>
+UC05 .> UC06 : <<include>>
+UC06 .> UC08 : <<include>>
+UC06 ..> UC07 : <<extend>>\n[optional]
+UC06 ..> UC09 : <<extend>>\n[when unresolved]
+UC09 ..> UC10 : <<extend>>\n[SME receives]
+UC10 ..> UC11 : <<extend>>\n[optional]
+UC10 ..> UC12 : <<extend>>\n[when gap found]
+UC06 ..> UC13 : <<extend>>\n[on resolution]
+UC14 ..> UC13 : <<extend>>\n[if no report]
+UC14 ..> UC17 : <<extend>>\n[if session active]
+
+@enduml

@@ -21,7 +21,7 @@ FastAPI Backend (backend/main.py)
         └── Report Generator (backend/report_generator.py) – AI-synthesised JSON report
 ```
 
-**Database:** SQLite (`crane_ai.db`) — 5 tables: `users`, `sessions`, `messages`, `measurements`, `reports`
+**Database:** SQLite (`crane_ai.db`) — 7 tables: `users`, `sessions`, `messages`, `measurements`, `reports`, `knowledge_gaps`, `notifications`
 
 **Vector store:** ChromaDB (persisted at `./chroma_db/`) — collection `crane_knowledge`
 
@@ -39,12 +39,22 @@ Process Guidance /
 │   ├── models.py            # ORM models: User, TroubleshootingSession, Message, Measurement, Report
 │   ├── schemas.py           # Pydantic v2 schemas for all request/response types
 │   ├── auth.py              # hash_password, verify_password, JWT create/decode, user CRUD
-│   ├── rag_system.py        # RAGSystem class: initialize(), retrieve()
+│   ├── rag_system.py        # RAGSystem class: initialize(), reinitialize(), retrieve()
 │   ├── ai_agent.py          # get_ai_response(), generate_opening_message(), build_system_prompt()
 │   ├── report_generator.py  # generate_report() – calls Claude, returns models.Report
-│   └── main.py              # FastAPI app – all 15 endpoints
+│   └── main.py              # FastAPI app – 39 endpoints (incl. resolve gap, notifications)
+├── agents/                  # Multi-agent pipeline (AGT-02 through AGT-09)
+│   ├── base_agent.py        # BaseAgent abstract class, AgentError
+│   ├── intake_agent.py, retrieval_agent.py, diagnostic_agent.py
+│   ├── parameter_agent.py, procedure_agent.py, safety_agent.py
+│   ├── report_agent.py, knowledge_feedback_agent.py
+├── orchestration/
+│   └── session_orchestrator.py  # AGT-01: coordinates all agent pipelines
+├── access_control/
+│   ├── permissions.py       # ROLE_PERMISSIONS dict + permission constants
+│   └── rbac.py              # require_role() / require_permission() FastAPI dependencies
 ├── frontend/
-│   └── app.py               # Streamlit app – 4 screens: login, intake, guidance, dashboard
+│   └── app.py               # Streamlit app – screens: login, intake, guidance, dashboard, admin
 ├── data/
 │   └── knowledge_base/      # 9 .txt technical manual documents (indexed into ChromaDB)
 │       ├── hoist_motor.txt, hoist_brake.txt, wire_rope.txt, gearbox.txt
@@ -97,13 +107,20 @@ open http://localhost:8000/docs
 | GET | `/dashboard` | All sessions for current user (filterable) |
 | GET | `/dashboard/stats` | Summary statistics |
 | GET | `/reports/{id}` | Fetch a specific report |
+| GET | `/knowledge-gaps` | Get knowledge gap records (KE, SME) |
+| PUT | `/knowledge-gaps/{id}/resolve` | KE: update KB file + re-index + notify ME/SME |
+| GET | `/notifications` | Get own notifications |
+| GET | `/notifications/unread-count` | Get unread notification count |
+| PUT | `/notifications/{id}/read` | Mark notification as read |
+| PUT | `/notifications/read-all` | Mark all notifications as read |
 
 ## UI Screens
 
 1. **Login / Signup** — JWT auth, stored in `st.session_state`
 2. **Issue Intake Form** — Crane → Component → Problem → Optional context; creates session + triggers opening AI message
-3. **AI Guidance Interface** — Chat panel (left) + Measurements / Evidence / Session State tabs (right)
-4. **Crane Dashboard** — Session history, filters, embedded reports, charts
+3. **AI Guidance Interface** — Chat panel (left) + Measurements / Evidence / Session State tabs (right); shows KB-updated banner if gap was resolved
+4. **Crane Dashboard** — Session history, filters, embedded reports, charts; KE tab has gap editor
+5. **Admin Panel** — User management, role assignment (ADM only)
 
 ## Important Behaviours
 
@@ -111,6 +128,8 @@ open http://localhost:8000/docs
 - **RAG is component-aware.** Retrieval queries ChromaDB with a `where` filter on `source` (component file) first (3 chunks), then falls back to general retrieval (2 chunks). Total 5 chunks per turn.
 - **Session state is tracked in DB.** The AI returns a `{"session_update": {...}}` JSON block embedded in every response. `main.py` parses and writes `completed_steps`, `likely_causes`, and `current_hypothesis` to the `sessions` table.
 - **Reports are AI-synthesised JSON.** `report_generator.py` sends full session transcript + measurements to Claude and parses a structured JSON report.
+- **Knowledge Gap Resolution is in-app.** KE resolves gaps via an editor in the dashboard. On submit: `.txt` file is updated, `RAGSystem.reinitialize()` re-indexes ChromaDB, the session transitions KNOWLEDGE_GAP_FLAGGED → IN_PROGRESS, and ME/SME are notified.
+- **Notifications are per-user.** The `notifications` table has one row per user per event. Unread count is shown as a badge on the bell icon in the top navigation bar.
 
 ## Environment Variables
 

@@ -1,0 +1,251 @@
+@startuml class_model
+title Domain Model — Class Diagram (Key Entities)
+
+skinparam class {
+  BackgroundColor #F5F5FF
+  BorderColor #333388
+  ArrowColor #333366
+  FontSize 11
+  AttributeFontSize 10
+}
+skinparam enum {
+  BackgroundColor #FFFACC
+  BorderColor #887700
+}
+skinparam note {
+  BackgroundColor #FFFFCC
+  BorderColor #888800
+  FontSize 9
+}
+
+' ─── Enumerations ──────────────────────────────────────────
+
+enum Role {
+  ME
+  SME
+  KE
+  SUP
+  ADM
+}
+
+enum FaultLifecycleState {
+  LOGGED
+  IN_PROGRESS
+  AWAITING_MEASUREMENT
+  PROBABLE_CAUSE_IDENTIFIED
+  UNRESOLVED
+  ESCALATED
+  SME_IN_REVIEW
+  KNOWLEDGE_GAP_FLAGGED
+  RESOLVED
+  CLOSED_WITH_REPORT
+}
+
+enum Severity {
+  critical
+  high
+  medium
+  low
+}
+
+enum MessageRole {
+  user
+  assistant
+}
+
+enum AnnotationType {
+  expert_note
+  cause_validation
+  procedure_correction
+}
+
+enum GapType {
+  missing_procedure
+  missing_parameter
+  outdated_specification
+  no_matching_content
+}
+
+' ─── Core Domain Classes ────────────────────────────────────
+
+class User {
+  +id : int <<PK>>
+  +username : str <<UNIQUE>>
+  +name : str
+  +hashed_password : str
+  +role : Role
+  +is_active : bool
+  +created_at : datetime
+  +last_login_at : datetime
+  --
+  +check_password(plain_password: str): bool
+  +has_permission(action: str): bool
+  +to_token_payload(): dict
+}
+
+class TroubleshootingSession {
+  +id : int <<PK>>
+  +crane_type : str
+  +component : str
+  +component_key : str
+  +problem_description : str
+  +environment : str
+  +recent_changes : str
+  +error_codes : str
+  +lifecycle_state : FaultLifecycleState
+  +completed_steps : list[str]
+  +likely_causes : list[str]
+  +current_hypothesis : str
+  +escalation_reason : str
+  +escalated_at : datetime
+  +created_at : datetime
+  +updated_at : datetime
+  +agent_metadata : dict
+  --
+  +transition_to(new_state: FaultLifecycleState, actor: User): void
+  +can_transition(new_state: FaultLifecycleState, role: Role): bool
+  +is_owned_by(user: User): bool
+  +is_readable_by(user: User): bool
+}
+
+class Message {
+  +id : int <<PK>>
+  +role : MessageRole
+  +content : str
+  +created_at : datetime
+}
+
+class Measurement {
+  +id : int <<PK>>
+  +voltage_v : float
+  +current_a : float
+  +temperature_c : float
+  +load_kg : float
+  +brake_gap_mm : float
+  +insulation_resistance_mohm : float
+  +vibration_mm_s_rms : float
+  +notes : str
+  +created_at : datetime
+  --
+  +has_values(): bool
+}
+
+class Report {
+  +id : int <<PK>>
+  +crane_type : str
+  +component : str
+  +issue_summary : str
+  +steps_taken : list[str]
+  +root_cause : str
+  +diagnosis : str
+  +recommendations : list[str]
+  +severity : Severity
+  +follow_up_required : bool
+  +generated_at : datetime
+  +agent_version : str
+  --
+  +is_readable_by(user: User): bool
+}
+
+class ExpertAnnotation {
+  +id : int <<PK>>
+  +annotation_text : str
+  +annotation_type : AnnotationType
+  +created_at : datetime
+}
+
+class EscalationRecord {
+  +id : int <<PK>>
+  +escalation_reason : str
+  +escalated_at : datetime
+}
+
+class KnowledgeGap {
+  +id : int <<PK>>
+  +component_key : str
+  +fault_pattern : str
+  +gap_type : GapType
+  +supporting_session_ids : list[str]
+  +suggested_action : str
+  +status : str
+  +created_at : datetime
+  +resolved_at : datetime
+}
+
+class StateTransition {
+  +id : int <<PK>>
+  +previous_state : FaultLifecycleState
+  +new_state : FaultLifecycleState
+  +reason : str
+  +transitioned_at : datetime
+}
+
+class AuditLogEntry {
+  +id : int <<PK>>
+  +event_type : str
+  +resource_type : str
+  +resource_id : str
+  +details : dict
+  +ip_address : str
+  +created_at : datetime
+}
+
+class EvidenceChunk {
+  +id : int <<PK>>
+  +chunk_id : str
+  +source_document : str
+  +content : str
+  +similarity_score : float
+  +turn_number : int
+}
+
+' ─── Relationships ──────────────────────────────────────────
+
+User "1" --o "0..*" TroubleshootingSession : creates\n(user_id)
+User "1" --o "0..*" TroubleshootingSession : assigned to review\n(escalated_to)
+User "1" --o "0..*" Report : generates\n(generated_by)
+User "1" --o "0..*" ExpertAnnotation : authors
+User "1" --o "0..*" StateTransition : triggers
+User "1" --o "0..*" AuditLogEntry : actor
+User "1" --o "0..*" KnowledgeGap : resolves\n(resolved_by)
+
+User ..> Role : has assigned >
+
+TroubleshootingSession "1" --* "0..*" Message : contains
+TroubleshootingSession "1" --* "0..*" Measurement : records
+TroubleshootingSession "1" --o "0..1" Report : produces
+TroubleshootingSession "1" --* "0..*" ExpertAnnotation : has
+TroubleshootingSession "1" --o "0..1" EscalationRecord : may have
+TroubleshootingSession "1" --* "0..*" StateTransition : history
+TroubleshootingSession "1" --* "0..*" EvidenceChunk : retrieved per turn
+TroubleshootingSession "1" --o "0..1" KnowledgeGap : may trigger
+
+TroubleshootingSession ..> FaultLifecycleState : current_state >
+Report ..> Severity : classified_as >
+
+EscalationRecord "1" --o "1" User : escalated_by
+EscalationRecord "1" --o "0..1" User : reviewed_by (SME)
+
+note top of TroubleshootingSession
+  Central entity in the domain model.
+  Owns the complete diagnostic record:
+  messages, measurements, evidence,
+  state history, annotations, report.
+end note
+
+note right of User
+  role field controls all
+  access control decisions
+  via ROLE_PERMISSIONS dict
+  in access_control/permissions.py
+end note
+
+note bottom of KnowledgeGap
+  Created by KnowledgeFeedbackAgent
+  (AGT-09) on session close.
+  Visible on KE dashboard.
+  Links to supporting sessions
+  for KE review context.
+end note
+
+@enduml

@@ -1,0 +1,163 @@
+@startuml fault_lifecycle_state
+title Fault Session Lifecycle — State Machine Diagram
+
+skinparam state {
+  BackgroundColor #EEF0FF
+  BorderColor #333388
+  ArrowColor #333366
+  FontSize 11
+}
+
+skinparam state<<active>> {
+  BackgroundColor #E0F0FF
+  BorderColor #2266AA
+}
+
+skinparam state<<safety>> {
+  BackgroundColor #FFEEEE
+  BorderColor #CC2222
+}
+
+skinparam state<<escalated>> {
+  BackgroundColor #FFF3E0
+  BorderColor #CC7700
+}
+
+skinparam state<<knowledge>> {
+  BackgroundColor #FFF0FF
+  BorderColor #882288
+}
+
+skinparam state<<terminal>> {
+  BackgroundColor #E0FFE0
+  BorderColor #227722
+}
+
+skinparam note {
+  BackgroundColor #FFFFCC
+  BorderColor #888800
+  FontSize 10
+}
+
+[*] --> LOGGED : ME / SME submits\nfault intake form\n[Intake Agent validates]
+
+state LOGGED {
+  LOGGED : Session record created.
+  LOGGED : Waiting for diagnostic session\nto begin.
+}
+
+state IN_PROGRESS <<active>> {
+  IN_PROGRESS : Active AI-guided diagnostic\nconversation in progress.
+  IN_PROGRESS : Retrieval + Diagnostic + Safety\nAgents active on every turn.
+}
+
+state AWAITING_MEASUREMENT <<active>> {
+  AWAITING_MEASUREMENT : AI has requested physical\nmeasurements from the engineer.
+  AWAITING_MEASUREMENT : Engineer performing\nfield tests.
+}
+
+state PROBABLE_CAUSE_IDENTIFIED <<active>> {
+  PROBABLE_CAUSE_IDENTIFIED : Diagnostic Agent has\nidentified a probable root\ncause with evidence.
+  PROBABLE_CAUSE_IDENTIFIED : Awaiting engineer confirmation.
+}
+
+state UNRESOLVED {
+  UNRESOLVED : Standard diagnostic path\nexhausted without conclusive\nroot cause.
+  UNRESOLVED : Engineer may escalate or\ncontinue diagnosis.
+}
+
+state ESCALATED <<escalated>> {
+  ESCALATED : Session handed to Senior\nEngineer / SME for expert\nreview.
+  ESCALATED : Originating engineer's context\nfully preserved.
+}
+
+state SME_IN_REVIEW <<escalated>> {
+  SME_IN_REVIEW : Senior Engineer is actively\nreviewing and annotating.
+  SME_IN_REVIEW : AI pipeline available with\nSME role context.
+}
+
+state KNOWLEDGE_GAP_FLAGGED <<knowledge>> {
+  KNOWLEDGE_GAP_FLAGGED : SME has identified missing\nor incorrect knowledge in\nthe manual documents.
+  KNOWLEDGE_GAP_FLAGGED : Knowledge Engineer notified\nvia dashboard.
+}
+
+state RESOLVED {
+  RESOLVED : Root cause confirmed.\nCorrective action identified.\nReady for report generation.
+}
+
+state CLOSED_WITH_REPORT <<terminal>> {
+  CLOSED_WITH_REPORT : Formal fault report generated\nand stored.
+  CLOSED_WITH_REPORT : Session archived.\nVisible in crane history for\nall engineers.
+}
+
+' Primary transitions
+LOGGED --> IN_PROGRESS : [ME / SME opens session]\nOrchestrator generates\nopening AI message
+
+IN_PROGRESS --> AWAITING_MEASUREMENT : [ME / SME: "Measuring now"]\nor AI requests measurement
+AWAITING_MEASUREMENT --> IN_PROGRESS : [ME / SME records measurement\nand resumes chat]
+
+IN_PROGRESS --> PROBABLE_CAUSE_IDENTIFIED : [AI: probable_cause_flag=true]\n[ME / SME confirms]
+PROBABLE_CAUSE_IDENTIFIED --> RESOLVED : [ME / SME validates\nroot cause]
+
+IN_PROGRESS --> UNRESOLVED : [ME / SME: "Cannot resolve"]\nor AI: unresolved_flag=true\nafter 8+ turns
+PROBABLE_CAUSE_IDENTIFIED --> UNRESOLVED : [ME / SME: "Cause\nunconfirmed"]
+
+' Escalation path
+UNRESOLVED --> ESCALATED : [ME escalates]\nescalation_reason recorded
+UNRESOLVED --> IN_PROGRESS : [ME / SME: "Continue\ndiagnosing"]
+IN_PROGRESS --> ESCALATED : [ME escalates\ndirectly from active session]
+
+ESCALATED --> SME_IN_REVIEW : [SME opens session]\nstate_transition recorded
+
+' SME review outcomes
+SME_IN_REVIEW --> RESOLVED : [SME validates root cause]
+SME_IN_REVIEW --> KNOWLEDGE_GAP_FLAGGED : [SME flags knowledge gap]\nKnowledgeFeedbackAgent invoked
+
+' Knowledge gap resolution
+KNOWLEDGE_GAP_FLAGGED --> SME_IN_REVIEW : [KE updates knowledge base]\nSME resumes review
+
+' Closure
+RESOLVED --> CLOSED_WITH_REPORT : [ME or SME:\nGenerate Report]\nReportGenerationAgent\nsynthesises JSON report
+
+CLOSED_WITH_REPORT --> [*]
+
+note right of LOGGED
+  Created by:
+  ME, SME
+  Visible to:
+  ME, SME, SUP, ADM
+end note
+
+note right of IN_PROGRESS
+  Safety Agent evaluates
+  every response.
+  Critical flags displayed
+  immediately and cannot
+  be suppressed.
+end note
+
+note right of ESCALATED
+  Visible to:
+  ME (read-only), SME, SUP
+  SME receives notification
+  via dashboard.
+end note
+
+note bottom of CLOSED_WITH_REPORT
+  TERMINAL STATE
+  Report readable by all
+  authenticated users.
+  Included in crane-level
+  history dashboard.
+end note
+
+note right of KNOWLEDGE_GAP_FLAGGED
+  Visible to:
+  KE, SME, SUP
+  KE updates .txt document
+  in knowledge_base/
+  Triggers ChromaDB
+  re-indexing on restart.
+end note
+
+@enduml

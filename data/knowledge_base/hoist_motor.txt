@@ -103,3 +103,26 @@ Motor Housing Temp      | <70°C                | >90°C → Stop immediately
 - Thermistor type: PTC (100-110°C trip point)
 - Bearing type: 6205/6206 deep groove (both ends)
 - Standard duty: FEM 2m (S3-25%)
+
+
+
+
+=== KNOWLEDGE UPDATE (2026-06-17 — added by KE: Demo KE) ===
+OVERLOAD RELAY DERATING — HIGH AMBIENT TEMPERATURE
+
+When the workshop or installation ambient temperature exceeds 20°C, the overload relay trip current must be reduced (derated) to ensure correct thermal protection.
+
+Standard derating rule:
+- For every 1°C above 20°C ambient, reduce the relay setting by approximately 1.5% to 2%.
+- Example: Motor rated at 15A in 20°C ambient. Workshop temperature is 38°C (18°C above reference). Derating = 18 x 1.75% = 31.5%. Adjusted setting = 15A x (1 - 0.315) = approximately 10.3A.
+
+Inspection and adjustment procedure:
+1. Isolate the panel (turn off main isolator and lock out).
+2. Locate the overload relay — labelled OL1 or OL2 on the panel diagram.
+3. Read the current setting on the relay dial (usually on the front face of the relay).
+4. Check the relay manufacturer datasheet (usually stored inside the panel door) for the derating table.
+5. Calculate the correct setting using the ambient temperature at the installation site.
+6. Adjust the relay dial to the calculated value.
+7. Record the new setting, date, and technician name in the maintenance log.
+8. Re-energise the panel and test motor operation under normal load.
+=== END UPDATE ===

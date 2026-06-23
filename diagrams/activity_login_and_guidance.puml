@@ -1,0 +1,224 @@
+@startuml activity_login_and_guidance
+title Activity Diagram: Login → Fault Intake → Guided Diagnosis → Escalation
+
+skinparam activity {
+  BackgroundColor #F0F0FF
+  BorderColor #333366
+  ArrowColor #333333
+  StartColor #333388
+  EndColor #333388
+  DiamondBackgroundColor #FFFACC
+  DiamondBorderColor #887700
+}
+skinparam swimlane {
+  BorderColor #AAAAAA
+  TitleBackgroundColor #EEEEFF
+  TitleBorderColor #333366
+}
+
+|User|
+start
+:Open Application in Browser;
+
+fork
+  :See Login Screen;
+fork again
+  note right : Only login/signup visible\nbefore authentication
+endfork
+
+if (Has an Account?) then (yes)
+  |User|
+  :Enter username and password;
+  :Submit Login Form;
+  |System|
+  :Verify bcrypt password hash;
+  if (Credentials Valid?) then (yes)
+    :Issue JWT token (8h expiry)\ncontaining user_id, username, role;
+  else (no)
+    :Return 401 Unauthorized;
+    |User|
+    :Display error message;
+    stop
+  endif
+else (no)
+  |User|
+  :Enter name, username,\npassword, and select Role;
+  :Submit Signup Form;
+  |System|
+  :Validate username uniqueness;
+  :Hash password with bcrypt;
+  :Create user record in database;
+  :Issue JWT token;
+endif
+
+|System|
+:Decode JWT — extract role;
+if (Role?) then (ME or SME)
+  :Route to Maintenance Dashboard\n(own sessions tab active);
+else if (KE)
+  :Route to Knowledge Dashboard\n(knowledge gaps tab active);
+else if (SUP)
+  :Route to Supervisor Dashboard\n(all sessions overview);
+else (ADM)
+  :Route to Admin Panel;
+  |User|
+  :Manage users and roles;
+  stop
+endif
+
+|User (ME/SME)|
+:View Dashboard;
+:Click "New Fault" / "New Issue";
+
+|System|
+:Display Fault Intake Form;
+
+|User (ME/SME)|
+:Select Crane Type from dropdown;
+:Select Component from dynamic dropdown;
+:Describe fault in free text;
+fork
+  :Add environmental conditions (optional);
+fork again
+  :Add recent maintenance changes (optional);
+fork again
+  :Add error codes / warnings (optional);
+endfork
+:Submit Intake Form;
+
+|System|
+:Intake Agent validates form data;
+:Create TroubleshootingSession record\n(state: LOGGED);
+:Invoke Retrieval Agent\n(initial evidence retrieval);
+:Invoke Diagnostic Reasoning Agent\n(generate opening message);
+:Safety Agent evaluates opening message;
+:Transition state → IN_PROGRESS;
+:Display AI Guidance Interface\nwith opening diagnostic message;
+
+|User (ME/SME)|
+repeat
+  :Read AI response and guidance;
+
+  fork
+    :Perform physical inspection or test;
+    :Open Measurements tab;
+    :Enter measurement values\n(voltage, current, temp,\nbrake gap, insulation…);
+    :Submit measurements;
+    |System|
+    :Store measurement record\nlinked to session;
+    |User (ME/SME)|
+  fork again
+    :Open Evidence tab;
+    :Read retrieved knowledge chunks\nand source documents;
+  fork again
+    :Open Session State tab;
+    :Review completed steps,\nlikely causes, current hypothesis;
+  endfork
+
+  :Type observation, answer, or\nadditional context in chat;
+  :Submit message;
+
+  |System|
+  :Retrieval Agent retrieves evidence\n(component + general queries);
+  :Parameter Agent annotates measurements\n(if new since last turn);
+  :Assemble system prompt\n(context + evidence + annotations + state);
+  :Diagnostic Reasoning Agent\ngenerates response;
+  :Safety Agent evaluates response;
+  :Update session state in database\n(steps, causes, hypothesis);
+  :Return response + evidence + state;
+
+  |User (ME/SME)|
+  if (Safety Alert in response?) then (yes)
+    :Read CRITICAL safety warning;
+    :Suspend crane operation if required;
+    :Contact safety officer;
+    note right : Safety warnings never\nsuppressed by system
+  endif
+
+repeat while (Probable cause not identified AND session not unresolved?)
+
+if (AI signals Probable Cause?) then (yes)
+  |System|
+  :Suggest transition →\nPROBABLE_CAUSE_IDENTIFIED;
+  |User (ME/SME)|
+  :Confirm probable cause;
+  :Click "Generate Report";
+
+  |System|
+  :Parameter Agent annotates\nall session measurements;
+  :Report Generation Agent\nsynthesises structured JSON report\n(issue, steps, cause, diagnosis,\nrecommendations, severity);
+  :Store report in database;
+  :Transition → CLOSED_WITH_REPORT;
+  :Knowledge Feedback Agent\nchecks for knowledge gaps;
+
+  |User (ME/SME)|
+  :View generated report on dashboard;
+  stop
+
+else (no — session unresolved)
+
+  if (Escalate to SME?) then (yes)
+    |User (ME)|
+    :Click "Escalate to SME";
+    :Enter escalation reason;
+    :Confirm escalation;
+
+    |System|
+    :Record escalation\n(engineer, timestamp, reason);
+    :Transition → ESCALATED;
+    :Session appears on SME dashboard;
+
+    |User (SME)|
+    :View escalated session\nin "Escalated" dashboard tab;
+    :Click "Open for Review";
+
+    |System|
+    :Restore full session context\nand escalation notes;
+    :Transition → SME_IN_REVIEW;
+
+    |User (SME)|
+    :Review conversation history\nand measurements;
+    :Continue diagnostic conversation;
+    :Add expert annotations (optional);
+
+    if (Knowledge Gap Identified?) then (yes)
+      :Click "Flag for Knowledge Review";
+
+      |System|
+      :Create knowledge gap record\n(component, pattern, gap_type);
+      :Transition → KNOWLEDGE_GAP_FLAGGED;
+      :Notify Knowledge Engineer dashboard;
+
+      |User (KE)|
+      :Review knowledge gap and\nreferenced sessions;
+      :Update knowledge base document;
+      :Mark gap as resolved;
+      :Trigger re-indexing;
+      stop
+
+    else (no)
+      |User (SME)|
+      :Validate root cause;
+      :Transition → RESOLVED;
+      :Generate Report;
+
+      |System|
+      :Transition → CLOSED_WITH_REPORT;
+
+      |User (SME)|
+      :View report on dashboard;
+      stop
+    endif
+
+  else (no — close without full resolution)
+    |User (ME/SME)|
+    :Generate partial report\n(root_cause: "undetermined");
+
+    |System|
+    :Store report;
+    :Transition → CLOSED_WITH_REPORT;
+    stop
+  endif
+endif
+
+@enduml

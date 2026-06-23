@@ -1,0 +1,121 @@
+@startuml component_view
+title AI-Assisted Process Guidance Tool — Component Diagram
+
+skinparam component {
+  BackgroundColor #F0F0FF
+  BorderColor #333366
+  FontSize 11
+}
+skinparam database {
+  BackgroundColor #FFFACC
+  BorderColor #887700
+}
+skinparam cloud {
+  BackgroundColor #E8FFE8
+  BorderColor #226622
+}
+skinparam package {
+  BackgroundColor #FAFAFA
+  BorderColor #AAAAAA
+  FontSize 12
+  FontStyle bold
+}
+skinparam interface {
+  BackgroundColor #FFEECC
+  BorderColor #AA6600
+}
+
+package "Frontend Tier" #EEEEFF {
+  [Streamlit App\n(frontend/app.py)] as FE
+  note right of FE
+    Role-aware UI rendering
+    Screen routing via session_state
+    JWT stored in session_state
+    Role-filtered navigation
+  end note
+}
+
+package "Backend Tier" #EEFFF5 {
+
+  package "API Layer" {
+    [FastAPI App\n(backend/main.py)] as API
+    [Auth Middleware\n(auth/auth.py)] as AUTH
+    [RBAC Guards\n(access_control/rbac.py)] as RBAC
+    [RBAC Permissions\n(access_control/permissions.py)] as PERMS
+  }
+
+  package "Orchestration Layer" #FFEEEE {
+    [Session Orchestrator\n(orchestration/session_orchestrator.py)\nAGT-01] as ORCH
+  }
+
+  package "Agent Layer" #FFF5EE {
+    [Intake Agent\nAGT-02] as A02
+    [Retrieval Agent\nAGT-03] as A03
+    [Diagnostic Reasoning Agent\nAGT-04] as A04
+    [Parameter Interpretation Agent\nAGT-05] as A05
+    [Procedure Guidance Agent\nAGT-06] as A06
+    [Safety / Guardrail Agent\nAGT-07] as A07
+    [Report Generation Agent\nAGT-08] as A08
+    [Knowledge Feedback Agent\nAGT-09] as A09
+  }
+
+  package "Domain Layer" {
+    [Session Manager\n(session/session_manager.py)] as SM
+    [Fault Lifecycle Controller\n(session/fault_lifecycle.py)] as FLC
+    [RAG System\n(knowledge/rag_system.py)] as RAG
+    [Parameter Specs\n(knowledge/parameter_specs.py)] as PS
+  }
+}
+
+package "Data Tier" {
+  database "SQLite\n(crane_ai.db)\n5 core tables + 3 extended" as DB
+  database "ChromaDB\nVector Store\n(chroma_db/)" as CDB
+}
+
+package "External" {
+  cloud "Anthropic API\n(claude-sonnet-4-6)" as ANTHRO
+}
+
+rectangle "Knowledge Base\n(data/knowledge_base/\n9 .txt documents)" as KB #FFFACC
+
+' Frontend to Backend
+FE --> API : HTTP REST (JSON)\nJWT in Authorization header
+
+' API Layer internals
+API --> AUTH : validate_token()
+API --> RBAC : require_role()
+RBAC --> PERMS : ROLE_PERMISSIONS lookup
+
+' API to Orchestration
+API --> ORCH : handle_session_start()\nhandle_chat_turn()\nhandle_report_request()\nhandle_escalation()
+
+' Orchestrator to Agents
+ORCH --> A02 : validate_intake()
+ORCH --> A03 : retrieve()
+ORCH --> A04 : respond()
+ORCH --> A05 : annotate()
+ORCH --> A06 : get_procedure()
+ORCH --> A07 : evaluate()
+ORCH --> A08 : generate_report()
+ORCH --> A09 : check_knowledge_gaps()
+
+' Orchestrator to Domain
+ORCH --> SM : load_session()\nsave_session()
+ORCH --> FLC : transition_state()
+
+' Domain to Data
+SM --> DB : SQLAlchemy ORM
+FLC --> DB : state_transitions table
+
+' Agents to External/Data
+A03 --> RAG : retrieve(component_key, query)
+RAG --> CDB : cosine similarity search
+A04 --> ANTHRO : chat completions API
+A05 --> PS : get_reference_ranges(component)
+A08 --> ANTHRO : chat completions API
+
+' Knowledge Base indexing
+KB ..> RAG : indexed on startup
+RAG --> CDB : store embeddings
+
+@enduml
