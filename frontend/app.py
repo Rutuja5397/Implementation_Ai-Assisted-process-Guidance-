@@ -373,7 +373,7 @@ def render_top_bar():
             nav_buttons = []
             if _has_role("ME"):
                 nav_buttons.append(("📋 New Issue", "intake"))
-            if not _has_role("ADM"):
+            if not _has_role("ADM", "KE"):
                 nav_buttons.append(("📊 Dashboard", "dashboard"))
             if _has_role("SME"):
                 nav_buttons.append(("📥 SME Inbox", "sme_inbox"))
@@ -1945,23 +1945,29 @@ def screen_knowledge_gaps():
         </div>
         """, unsafe_allow_html=True)
 
-        btn_cols = st.columns([1, 1, 4]) if (is_ke and gap_status != "resolved") else st.columns([1, 5])
+        if is_ke and gap_status != "resolved":
+            btn_cols = st.columns([1, 5])
+        elif not is_ke and session_id:
+            btn_cols = st.columns([1, 5])
+        else:
+            btn_cols = None
 
-        with btn_cols[0]:
-            if session_id and st.button("📂 View Session", key=f"gap_view_{gap_id}", use_container_width=True):
-                st.session_state.current_session_id = session_id
-                msgs_resp = api("get", f"/sessions/{session_id}/messages")
-                if msgs_resp.status_code == 200:
-                    st.session_state.messages = [
-                        {"role": m["role"], "content": m["content"]}
-                        for m in msgs_resp.json()
-                    ]
-                st.session_state.screen = "guidance"
-                st.rerun()
+        if not is_ke and session_id and btn_cols:
+            with btn_cols[0]:
+                if st.button("📂 View Session", key=f"gap_view_{gap_id}", use_container_width=True):
+                    st.session_state.current_session_id = session_id
+                    msgs_resp = api("get", f"/sessions/{session_id}/messages")
+                    if msgs_resp.status_code == 200:
+                        st.session_state.messages = [
+                            {"role": m["role"], "content": m["content"]}
+                            for m in msgs_resp.json()
+                        ]
+                    st.session_state.screen = "guidance"
+                    st.rerun()
 
         # KE-only: resolve button opens editor
         if is_ke and gap_status != "resolved":
-            with btn_cols[1]:
+            with btn_cols[0]:
                 expand_key = f"ke_resolve_open_{gap_id}"
                 if expand_key not in st.session_state:
                     st.session_state[expand_key] = False

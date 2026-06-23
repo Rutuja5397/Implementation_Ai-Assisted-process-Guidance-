@@ -101,9 +101,6 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
     },
 
     Role.KE: {
-        P_REPORT_READ_ANY,
-        P_DASHBOARD_STATS,
-        P_CRANE_HISTORY,
         P_KNOWLEDGE_GAP_READ,
         P_KNOWLEDGE_GAP_RESOLVE,
         P_KNOWLEDGE_BASE_EDIT,
