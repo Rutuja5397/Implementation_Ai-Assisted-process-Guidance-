@@ -112,6 +112,7 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
     Role.SUP: {
         P_SESSION_READ_ALL,
         P_REPORT_READ_ANY,
+        P_DASHBOARD_OWN,
         P_DASHBOARD_ALL,
         P_DASHBOARD_ESCALATED,
         P_DASHBOARD_STATS,
@@ -122,6 +123,7 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
     Role.ADM: {
         P_SESSION_READ_ALL,
         P_REPORT_READ_ANY,
+        P_DASHBOARD_OWN,
         P_DASHBOARD_ALL,
         P_DASHBOARD_STATS,
         P_USER_READ,
