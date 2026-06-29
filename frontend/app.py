@@ -259,6 +259,20 @@ st.markdown("""
         background: linear-gradient(135deg, #2563eb, #1d4ed8);
         border: none; color: white; padding: 10px 24px;
     }
+
+    /* ── Nav bar buttons — uniform height, no text wrap ── */
+    div[data-testid="stHorizontalBlock"] .stButton > button,
+    div[data-testid="stHorizontalBlock"] .stPopover > button {
+        height: 42px !important;
+        min-height: 42px !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        font-size: 0.82rem !important;
+        padding: 0 10px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -347,7 +361,7 @@ def render_top_bar():
     user = st.session_state.user
     role = _role()
 
-    col1, col2 = st.columns([6, 4])
+    col1, col2 = st.columns([4, 6])
 
     with col1:
         role_color = ROLE_COLORS.get(role, "#6b7280")
@@ -380,7 +394,7 @@ def render_top_bar():
             if _has_role("SME"):
                 nav_buttons.append(("📥 SME Inbox", "sme_inbox"))
             if _has_role("KE", "SME"):
-                nav_buttons.append(("🔍 Knowledge Gaps", "knowledge_gaps"))
+                nav_buttons.append(("🔍 KB Gaps", "knowledge_gaps"))
             if _has_role("ADM"):
                 nav_buttons.append(("⚙️ Admin", "admin"))
 
