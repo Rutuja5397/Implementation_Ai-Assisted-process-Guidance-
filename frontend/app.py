@@ -1460,11 +1460,13 @@ def screen_dashboard():
     """, unsafe_allow_html=True)
 
     # ── View mode selector (role-gated) ──────────────────────────
-    view_options = ["My Sessions"]
-    if role in ("SME", "SUP", "ADM"):
-        view_options += ["All Sessions"]
-    if role in ("SME", "SUP"):
-        view_options += ["Escalated / SME Review"]
+    # ME/SUP start with their own sessions; SME starts with all (they have no own sessions)
+    if role == "SME":
+        view_options = ["All Sessions", "Escalated / SME Review"]
+    elif role == "SUP":
+        view_options = ["All Sessions", "Escalated / SME Review"]
+    else:
+        view_options = ["My Sessions"]
 
     col_t, col_v = st.columns([3, 2])
     with col_v:
