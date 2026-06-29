@@ -1346,8 +1346,8 @@ def _assert_session_readable(session: models.TroubleshootingSession, user: model
     if has_permission(user.role, P_SESSION_READ_ALL):
         return   # SUP / ADM see everything
     if has_permission(user.role, P_SESSION_READ_ESCALATED):
-        if session.lifecycle_state in ("ESCALATED", "SME_IN_REVIEW"):
-            return   # SME can see escalated sessions
+        if session.lifecycle_state in ("ESCALATED", "SME_IN_REVIEW", "KNOWLEDGE_GAP_FLAGGED"):
+            return   # SME can see escalated and gap-flagged sessions
     raise HTTPException(403, "Access denied to this session")
 
 

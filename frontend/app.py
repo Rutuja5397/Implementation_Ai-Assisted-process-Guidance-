@@ -459,6 +459,7 @@ def _nav(screen: str):
         st.session_state.messages = []
         st.session_state.evidence = []
         st.session_state.measurements_submitted = []
+    st.session_state.guidance_readonly = False
     st.session_state.screen = screen
     st.rerun()
 
@@ -1056,8 +1057,8 @@ def screen_guidance():
         """, unsafe_allow_html=True)
 
     with col_h2:
-        # Generate report button — available if not closed
-        if not is_closed and _has_role("ME", "SME"):
+        # Generate report button — available if not closed and not read-only
+        if not is_closed and not readonly and _has_role("ME", "SME"):
             if st.button("⚡ Generate Report", type="primary", use_container_width=True):
                 with st.spinner("Generating report..."):
                     resp = api("post", f"/sessions/{session_id}/report")
@@ -1067,16 +1068,22 @@ def screen_guidance():
                     st.rerun()
 
     with col_h3:
-        # Escalate button — only for ME when session is active and not escalated
-        can_escalate = (
-            role == "ME"
-            and lifecycle in ("IN_PROGRESS", "AWAITING_MEASUREMENT", "UNRESOLVED",
-                               "PROBABLE_CAUSE_IDENTIFIED")
-        )
-        if can_escalate:
-            if st.button("🚨 Escalate", use_container_width=True):
-                st.session_state._show_escalate_dialog = True
+        if readonly:
+            if st.button("← Back to Gaps", use_container_width=True):
+                st.session_state.guidance_readonly = False
+                st.session_state.screen = "knowledge_gaps"
                 st.rerun()
+        else:
+            # Escalate button — only for ME when session is active and not escalated
+            can_escalate = (
+                role == "ME"
+                and lifecycle in ("IN_PROGRESS", "AWAITING_MEASUREMENT", "UNRESOLVED",
+                                   "PROBABLE_CAUSE_IDENTIFIED")
+            )
+            if can_escalate:
+                if st.button("🚨 Escalate", use_container_width=True):
+                    st.session_state._show_escalate_dialog = True
+                    st.rerun()
 
     # Escalation dialog
     if st.session_state.get("_show_escalate_dialog"):
@@ -1110,8 +1117,18 @@ def screen_guidance():
                         st.session_state._show_escalate_dialog = False
                         st.rerun()
 
+    # Read-only mode — set when SME opens a session from Knowledge Gaps
+    readonly = st.session_state.get("guidance_readonly", False)
+
+    if readonly:
+        st.info(
+            "📖 **Read-only view** — You are reviewing this session's diagnostic history "
+            "as context for the knowledge gap. No changes can be made here.",
+            icon=None,
+        )
+
     # SME Actions bar — for SME on escalated/SME-review sessions
-    if role == "SME" and lifecycle in ("ESCALATED", "SME_IN_REVIEW"):
+    if role == "SME" and lifecycle in ("ESCALATED", "SME_IN_REVIEW") and not readonly:
         _render_sme_action_bar(session_id, lifecycle, ssd)
 
     # ── Layout ───────────────────────────────────────────────────
@@ -1169,7 +1186,8 @@ def screen_guidance():
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        _render_structured_input(session_id, is_closed, lifecycle)
+        if not readonly:
+            _render_structured_input(session_id, is_closed, lifecycle)
 
     # ── RIGHT: Tabs ──────────────────────────────────────────────
     with right_col:
@@ -1960,6 +1978,7 @@ def screen_knowledge_gaps():
             with btn_cols[0]:
                 if st.button("📂 View Session", key=f"gap_view_{gap_id}", use_container_width=True):
                     st.session_state.current_session_id = session_id
+                    st.session_state.guidance_readonly = True
                     msgs_resp = api("get", f"/sessions/{session_id}/messages")
                     if msgs_resp.status_code == 200:
                         st.session_state.messages = [
