@@ -1014,6 +1014,7 @@ def screen_guidance():
     ssd  = st.session_state.session_state_data
     role = _role()
     is_closed = lifecycle == "CLOSED_WITH_REPORT"
+    readonly = st.session_state.get("guidance_readonly", False)
 
     # ── Knowledge-updated banner ──────────────────────────────────
     # Show when the session was previously in KNOWLEDGE_GAP_FLAGGED and is now
@@ -1116,9 +1117,6 @@ def screen_guidance():
                     if st.form_submit_button("Cancel", use_container_width=True):
                         st.session_state._show_escalate_dialog = False
                         st.rerun()
-
-    # Read-only mode — set when SME opens a session from Knowledge Gaps
-    readonly = st.session_state.get("guidance_readonly", False)
 
     if readonly:
         st.info(
