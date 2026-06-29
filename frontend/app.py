@@ -310,7 +310,9 @@ def _landing_screen_for_role(role: str) -> str:
         return "admin"
     if role == "SUP":
         return "dashboard"
-    return "intake"   # ME, SME
+    if role == "SME":
+        return "sme_inbox"
+    return "intake"   # ME
 
 
 # ═══════════════════════════════════════════════════════════════════
