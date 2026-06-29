@@ -1920,12 +1920,12 @@ def screen_knowledge_gaps():
         return
 
     open_gaps = [g for g in gaps if g.get("status") != "resolved"]
-    resolved_gaps = [g for g in gaps if g.get("status") == "resolved"]
+    resolved_gaps = [g for g in gaps if g.get("status") == "resolved"] if show_resolved else []
 
     col_m1, col_m2, col_m3 = st.columns(3)
     col_m1.metric("Open Gaps", len(open_gaps))
     col_m2.metric("Resolved", len(resolved_gaps))
-    col_m3.metric("Total Shown", len(gaps))
+    col_m3.metric("Total Shown", len(open_gaps) + len(resolved_gaps))
     st.divider()
 
     gap_types = sorted({g.get("gap_type", "unknown") for g in gaps})
