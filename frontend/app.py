@@ -1908,25 +1908,33 @@ def screen_knowledge_gaps():
     """, unsafe_allow_html=True)
 
     show_resolved = st.checkbox("Show resolved gaps", value=False)
-    resp = api("get", f"/knowledge-gaps?include_resolved={'true' if show_resolved else 'false'}")
-    if resp.status_code != 200:
-        handle_api_error(resp, "Failed to load knowledge gaps")
+
+    # Always fetch all gaps for accurate metrics
+    all_resp = api("get", "/knowledge-gaps?include_resolved=true")
+    if all_resp.status_code != 200:
+        handle_api_error(all_resp, "Failed to load knowledge gaps")
         return
 
-    gaps = resp.json()
+    all_gaps = all_resp.json()
+    open_gaps_all    = [g for g in all_gaps if g.get("status") != "resolved"]
+    resolved_gaps_all = [g for g in all_gaps if g.get("status") == "resolved"]
+
+    # Metrics always reflect true database counts
+    col_m1, col_m2, col_m3 = st.columns(3)
+    col_m1.metric("Open Gaps", len(open_gaps_all))
+    col_m2.metric("Resolved", len(resolved_gaps_all))
+    col_m3.metric("Total", len(all_gaps))
+    st.divider()
+
+    # Display list filtered by checkbox
+    gaps = resolved_gaps_all if show_resolved else open_gaps_all
 
     if not gaps:
-        st.success("✅ No open knowledge gaps — the knowledge base covers all recorded cases.")
+        if show_resolved:
+            st.info("No resolved gaps yet.")
+        else:
+            st.success("✅ No open knowledge gaps — the knowledge base covers all recorded cases.")
         return
-
-    open_gaps = [g for g in gaps if g.get("status") != "resolved"]
-    resolved_gaps = [g for g in gaps if g.get("status") == "resolved"] if show_resolved else []
-
-    col_m1, col_m2, col_m3 = st.columns(3)
-    col_m1.metric("Open Gaps", len(open_gaps))
-    col_m2.metric("Resolved", len(resolved_gaps))
-    col_m3.metric("Total Shown", len(open_gaps) + len(resolved_gaps))
-    st.divider()
 
     gap_types = sorted({g.get("gap_type", "unknown") for g in gaps})
     filter_type = st.selectbox(
