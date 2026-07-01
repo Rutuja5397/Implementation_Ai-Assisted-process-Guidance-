@@ -120,7 +120,7 @@ class DiagnosticReasoningAgent(BaseAgent):
                 system=system_prompt,
                 messages=messages,
                 tools=[DIAGNOSTIC_TOOL],
-                tool_choice={"type": "any"},
+                tool_choice={"type": "auto"},
             )
         except anthropic.APIError as exc:
             raise AgentError(self.AGT_ID, f"Anthropic API error: {exc}") from exc
@@ -143,22 +143,40 @@ class DiagnosticReasoningAgent(BaseAgent):
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 def _parse_tool_response(response):
-    """Extract prose text and structured data from a tool_use response."""
+    """Extract prose text and structured data from a Claude response.
+    Works whether Claude used the tool or not — falls back to regex parsing.
+    """
+    import re as _re
+
     display_text      = ""
     session_update    = {}
     questions         = []
     confidence        = "high"
     confidence_reason = ""
+    tool_called       = False
 
     for block in response.content:
         if block.type == "text":
             display_text += block.text
         elif block.type == "tool_use" and block.name == "submit_diagnostic_data":
+            tool_called       = True
             data              = block.input
             session_update    = data.get("session_update", {})
             questions         = data.get("questions", [])
             confidence        = data.get("knowledge_confidence", "high")
             confidence_reason = data.get("confidence_reason", "")
+
+    # Fallback: if Claude didn't call the tool, try regex on the text
+    if not tool_called and display_text:
+        match = _re.search(r"```json\s*(.*?)\s*```", display_text, _re.DOTALL)
+        if match:
+            try:
+                data = json.loads(match.group(1))
+                session_update = data.get("session_update", {})
+            except (json.JSONDecodeError, AttributeError):
+                pass
+        # Clean JSON block from display text
+        display_text = _re.sub(r"```json\s*.*?```", "", display_text, flags=_re.DOTALL)
 
     return display_text.strip(), session_update, questions, confidence, confidence_reason
 

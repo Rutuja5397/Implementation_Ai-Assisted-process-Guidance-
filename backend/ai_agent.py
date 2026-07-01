@@ -251,7 +251,7 @@ def get_ai_response(
         system=system_prompt,
         messages=messages,
         tools=[DIAGNOSTIC_TOOL],
-        tool_choice={"type": "any"},
+        tool_choice={"type": "auto"},
     )
 
     display_text, session_update, questions, confidence, confidence_reason = _parse_tool_response(response)
@@ -318,7 +318,7 @@ def generate_opening_message(session_data: Dict[str, Any]) -> Dict[str, Any]:
         system=system_prompt,
         messages=[{"role": "user", "content": opening_request}],
         tools=[DIAGNOSTIC_TOOL],
-        tool_choice={"type": "any"},
+        tool_choice={"type": "auto"},
     )
 
     display_text, session_update, questions, confidence, confidence_reason = _parse_tool_response(response)
@@ -336,23 +336,38 @@ def generate_opening_message(session_data: Dict[str, Any]) -> Dict[str, Any]:
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
 def _parse_tool_response(response):
-    """Parse a Claude response that uses tool_use.
+    """Parse a Claude response that may or may not use tool_use.
     Returns (display_text, session_update, questions, confidence, confidence_reason).
     """
-    display_text = ""
-    session_update = {}
-    questions = []
-    confidence = "high"
+    import re as _re
+
+    display_text      = ""
+    session_update    = {}
+    questions         = []
+    confidence        = "high"
     confidence_reason = ""
+    tool_called       = False
 
     for block in response.content:
         if block.type == "text":
             display_text += block.text
         elif block.type == "tool_use" and block.name == "submit_diagnostic_data":
-            data = block.input
+            tool_called       = True
+            data              = block.input
             session_update    = data.get("session_update", {})
             questions         = data.get("questions", [])
             confidence        = data.get("knowledge_confidence", "high")
             confidence_reason = data.get("confidence_reason", "")
+
+    # Fallback: if tool wasn't called, try regex on the text block
+    if not tool_called and display_text:
+        match = _re.search(r"```json\s*(.*?)\s*```", display_text, _re.DOTALL)
+        if match:
+            try:
+                data = json.loads(match.group(1))
+                session_update = data.get("session_update", {})
+            except (json.JSONDecodeError, AttributeError):
+                pass
+        display_text = _re.sub(r"```json\s*.*?```", "", display_text, flags=_re.DOTALL)
 
     return display_text.strip(), session_update, questions, confidence, confidence_reason
