@@ -884,9 +884,7 @@ def _render_assistant_message(content: str, confidence: str = "high", confidence
 
 
 def _render_structured_input(session_id: int, is_closed: bool, lifecycle: str):
-    """Render structured question widgets or fall back to plain text area."""
-    questions = st.session_state.get("pending_questions", [])
-
+    """Render the engineer response area — plain text area for free-form observations."""
     if is_closed or not _has_role("ME", "SME"):
         if is_closed:
             st.info("Session closed. View the generated report in the Dashboard.")
@@ -910,89 +908,26 @@ def _render_structured_input(session_id: int, is_closed: bool, lifecycle: str):
         })
         st.session_state.pending_questions = data.get("questions", [])
 
-    if questions:
-        st.markdown(
-            '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;'
-            'padding:12px 16px;margin-bottom:6px;">'
-            '<span style="font-size:0.78rem;font-weight:700;color:#475569;'
-            'text-transform:uppercase;letter-spacing:0.05em;">Answer each question below</span>'
-            '</div>',
-            unsafe_allow_html=True,
+    with st.form("chat_form", clear_on_submit=True):
+        user_input = st.text_area(
+            "Your response",
+            placeholder=(
+                "Describe your observations and measurements here...\n"
+                "e.g. 'Resistance across NC contacts: 0.3 Ω. Actuator arm is intact "
+                "and correctly aligned with the hook block striker.'"
+            ),
+            height=100, label_visibility="collapsed",
         )
-        with st.form("structured_input_form", clear_on_submit=True):
-            answers = {}
-            for i, q in enumerate(questions):
-                q_type = q.get("type", "text")
-                q_text = q.get("text", "")
-                st.markdown(
-                    f'<div style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;'
-                    f'padding:10px 14px;margin-bottom:4px;">'
-                    f'<span style="font-size:0.82rem;font-weight:600;color:#374151;">Q{i+1}. {q_text}</span>'
-                    f'</div>',
-                    unsafe_allow_html=True,
-                )
-                if q_type == "yesno":
-                    answers[i] = st.radio(
-                        f"q{i}", ["Yes", "No", "Not checked yet"],
-                        key=f"sq_{i}", horizontal=True, label_visibility="collapsed",
-                    )
-                elif q_type == "number":
-                    unit = q.get("unit", "")
-                    answers[i] = st.text_input(
-                        f"Value{' (' + unit + ')' if unit else ''}",
-                        key=f"sq_{i}", placeholder=f"Enter value{' in ' + unit if unit else ''}",
-                    )
-                elif q_type == "choice":
-                    options = q.get("options", ["—"])
-                    answers[i] = st.selectbox(f"q{i}", options, key=f"sq_{i}", label_visibility="collapsed")
-                else:
-                    answers[i] = st.text_area(f"q{i}", key=f"sq_{i}", height=55, label_visibility="collapsed",
-                                               placeholder="Type your observation...")
+        col_f1, col_f2 = st.columns([4, 1])
+        with col_f2:
+            send_btn = st.form_submit_button("Send →", use_container_width=True, type="primary")
 
-            extra = st.text_input(
-                "Additional observation (optional)", key="sq_extra",
-                placeholder="Any other finding not covered above...",
-            )
-            send_btn = st.form_submit_button("Send Answers →", type="primary")
-
-        if send_btn:
-            parts = []
-            for i, q in enumerate(questions):
-                ans = answers.get(i)
-                if ans is not None and str(ans).strip() not in ("", "—"):
-                    parts.append(f"{q['text']}: {ans}")
-            if extra and extra.strip():
-                parts.append(extra.strip())
-            if parts:
-                assembled = "\n".join(parts)
-                with st.spinner("🤖 Analysing..."):
-                    resp = api("post", f"/sessions/{session_id}/chat", json={"message": assembled})
-                if handle_api_error(resp, "Chat failed"):
-                    _store_response(resp.json(), assembled)
-                    st.rerun()
-            else:
-                st.warning("Please answer at least one question before sending.")
-    else:
-        # Fallback: plain text area
-        with st.form("chat_form", clear_on_submit=True):
-            user_input = st.text_area(
-                "Your response",
-                placeholder=(
-                    "Type your observations, measurements, or answers here...\n"
-                    "e.g. 'Voltage on L1: 402V, L2: 398V, L3: 401V. Motor humming but not rotating.'"
-                ),
-                height=90, label_visibility="collapsed",
-            )
-            col_f1, col_f2 = st.columns([4, 1])
-            with col_f2:
-                send_btn = st.form_submit_button("Send →", use_container_width=True, type="primary")
-
-        if send_btn and user_input.strip():
-            with st.spinner("🤖 Analysing..."):
-                resp = api("post", f"/sessions/{session_id}/chat", json={"message": user_input.strip()})
-            if handle_api_error(resp, "Chat failed"):
-                _store_response(resp.json(), user_input.strip())
-                st.rerun()
+    if send_btn and user_input.strip():
+        with st.spinner("🤖 Analysing..."):
+            resp = api("post", f"/sessions/{session_id}/chat", json={"message": user_input.strip()})
+        if handle_api_error(resp, "Chat failed"):
+            _store_response(resp.json(), user_input.strip())
+            st.rerun()
 
 
 # ═══════════════════════════════════════════════════════════════════
