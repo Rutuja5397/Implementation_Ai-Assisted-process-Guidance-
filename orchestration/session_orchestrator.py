@@ -143,6 +143,9 @@ class SessionOrchestrator:
         return {
             "response_text":          safety_result["modified_response"],
             "session_update":         diag_result.get("session_update", {}),
+            "questions":              diag_result.get("questions", []),
+            "knowledge_confidence":   diag_result.get("knowledge_confidence", "high"),
+            "confidence_reason":      diag_result.get("confidence_reason", ""),
             "retrieved_evidence":     chunks,
             "knowledge_gap_indicator": kb_gap,
             "component_key":          component_key,
@@ -259,6 +262,9 @@ class SessionOrchestrator:
         return {
             "response_text":           safety_result["modified_response"],
             "session_update":          diag_result.get("session_update", {}),
+            "questions":               diag_result.get("questions", []),
+            "knowledge_confidence":    diag_result.get("knowledge_confidence", "high"),
+            "confidence_reason":       diag_result.get("confidence_reason", ""),
             "retrieved_evidence":      chunks,
             "has_critical":            has_critical,
             "annotated_measurements":  param_result.get("annotated_measurements", []),

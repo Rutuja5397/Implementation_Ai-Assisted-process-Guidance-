@@ -2,18 +2,13 @@
 AGT-04: Diagnostic Reasoning Agent
 
 Core LLM-based reasoning agent. Generates targeted diagnostic questions,
-interprets observations, updates hypotheses, and embeds structured
-session_update JSON in every response.
-
-Aware of the calling user's role so it can adjust response depth:
-  ME  → step-by-step guidance, measurement instructions
-  SME → deeper technical analysis, tolerance values, root cause reasoning
+interprets observations, updates hypotheses, and uses tool_use to guarantee
+structured output (questions, session_update, knowledge_confidence) every turn.
 """
 
 import json
 import logging
 import os
-import re
 from typing import Any
 
 import anthropic
@@ -22,9 +17,59 @@ from agents.base_agent import BaseAgent, AgentError
 
 logger = logging.getLogger(__name__)
 
-AGENT_MODEL   = "claude-sonnet-4-6"
-MAX_TOKENS    = 1500
-VERSION       = "2.0.0"
+AGENT_MODEL = "claude-sonnet-4-6"
+MAX_TOKENS  = 2500
+VERSION     = "2.0.0"
+
+# ─── Tool definition ──────────────────────────────────────────────────────────
+
+DIAGNOSTIC_TOOL = {
+    "name": "submit_diagnostic_data",
+    "description": (
+        "Submit structured diagnostic data for this troubleshooting step. "
+        "Call this ONCE per response with the questions for the engineer to answer "
+        "and the current session state."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "session_update": {
+                "type": "object",
+                "properties": {
+                    "completed_steps":      {"type": "array", "items": {"type": "string"}},
+                    "likely_causes":        {"type": "array", "items": {"type": "string"}},
+                    "current_hypothesis":   {"type": "string"},
+                    "probable_cause_flag":  {"type": "boolean"},
+                    "unresolved_flag":      {"type": "boolean"},
+                    "safety_concern_flag":  {"type": "boolean"},
+                },
+                "required": ["completed_steps", "likely_causes", "current_hypothesis"],
+            },
+            "questions": {
+                "type": "array",
+                "description": "Structured questions for the engineer to answer via form widgets.",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "text":    {"type": "string"},
+                        "type":    {"type": "string", "enum": ["yesno", "number", "choice", "text"]},
+                        "unit":    {"type": "string"},
+                        "options": {"type": "array", "items": {"type": "string"}},
+                    },
+                    "required": ["text", "type"],
+                },
+            },
+            "knowledge_confidence": {
+                "type": "string",
+                "enum": ["high", "medium", "low"],
+            },
+            "confidence_reason": {
+                "type": "string",
+            },
+        },
+        "required": ["session_update", "questions", "knowledge_confidence"],
+    },
+}
 
 
 class DiagnosticReasoningAgent(BaseAgent):
@@ -32,54 +77,36 @@ class DiagnosticReasoningAgent(BaseAgent):
     VERSION = VERSION
 
     def _execute(self, payload: dict[str, Any]) -> dict[str, Any]:
-        """
-        Input keys:
-          context_snapshot:    str
-          evidence_text:       str   (formatted evidence block)
-          measurement_text:    str   (formatted measurement block from ParameterAgent)
-          conversation_history:list[{role, content}]
-          new_user_message:    str   (empty string for opening turn)
-          session_state:       dict  {completed_steps, likely_causes, current_hypothesis}
-          user_role:           str   (ME | SME)
-          is_opening_turn:     bool
-
-        Output:
-          response_text:   str   (cleaned, markdown-safe)
-          session_update:  dict  {completed_steps, likely_causes, current_hypothesis,
-                                  probable_cause_flag, unresolved_flag, safety_concern_flag}
-          tokens_used:     dict
-        """
         api_key = os.getenv("ANTHROPIC_API_KEY")
         if not api_key:
             raise AgentError(self.AGT_ID, "ANTHROPIC_API_KEY not set")
 
-        context_snapshot   : str  = payload.get("context_snapshot", "")
-        evidence_text      : str  = payload.get("evidence_text", "")
-        measurement_text   : str  = payload.get("measurement_text", "")
-        history            : list = payload.get("conversation_history", [])
-        new_message        : str  = payload.get("new_user_message", "")
-        session_state      : dict = payload.get("session_state", {})
-        user_role          : str  = payload.get("user_role", "ME")
-        is_opening         : bool = payload.get("is_opening_turn", False)
+        context_snapshot : str  = payload.get("context_snapshot", "")
+        evidence_text    : str  = payload.get("evidence_text", "")
+        measurement_text : str  = payload.get("measurement_text", "")
+        history          : list = payload.get("conversation_history", [])
+        new_message      : str  = payload.get("new_user_message", "")
+        session_state    : dict = payload.get("session_state", {})
+        user_role        : str  = payload.get("user_role", "ME")
+        is_opening       : bool = payload.get("is_opening_turn", False)
 
         system_prompt = _build_system_prompt(
             context_snapshot, evidence_text, measurement_text,
             session_state, user_role,
         )
 
-        messages = list(history)  # copy
+        messages = list(history)
 
         if is_opening:
-            comp = _extract_field(context_snapshot, "Affected Component")
-            crane= _extract_field(context_snapshot, "Crane Type")
-            prob = _extract_field(context_snapshot, "Reported Problem")
+            comp  = _extract_field(context_snapshot, "Affected Component")
+            crane = _extract_field(context_snapshot, "Crane Type")
+            prob  = _extract_field(context_snapshot, "Reported Problem")
             messages.append({"role": "user", "content": (
                 f"A new troubleshooting session has started. "
                 f"The engineer has reported a problem with the {comp} on a {crane}: "
                 f"\"{prob}\". "
                 f"Acknowledge what you know from the intake form, summarise the likely "
-                f"fault categories for this component and problem, then ask your FIRST "
-                f"targeted diagnostic question."
+                f"fault categories, then ask your first targeted diagnostic questions."
             )})
         else:
             if new_message:
@@ -92,26 +119,49 @@ class DiagnosticReasoningAgent(BaseAgent):
                 max_tokens=MAX_TOKENS,
                 system=system_prompt,
                 messages=messages,
+                tools=[DIAGNOSTIC_TOOL],
+                tool_choice={"type": "any"},
             )
         except anthropic.APIError as exc:
             raise AgentError(self.AGT_ID, f"Anthropic API error: {exc}") from exc
 
-        raw_text = resp.content[0].text
-        session_update = _extract_session_update(raw_text)
-        display_text   = _clean_response_text(raw_text)
+        display_text, session_update, questions, confidence, confidence_reason = _parse_tool_response(resp)
 
         return {
-            "response_text":  display_text,
-            "raw_response":   raw_text,
-            "session_update": session_update,
-            "tokens_used":    {
+            "response_text":        display_text,
+            "session_update":       session_update,
+            "questions":            questions,
+            "knowledge_confidence": confidence,
+            "confidence_reason":    confidence_reason,
+            "tokens_used": {
                 "input":  resp.usage.input_tokens,
                 "output": resp.usage.output_tokens,
             },
         }
 
 
-# ─── Helpers ─────────────────────────────────────────────────────────────────
+# ─── Helpers ──────────────────────────────────────────────────────────────────
+
+def _parse_tool_response(response):
+    """Extract prose text and structured data from a tool_use response."""
+    display_text      = ""
+    session_update    = {}
+    questions         = []
+    confidence        = "high"
+    confidence_reason = ""
+
+    for block in response.content:
+        if block.type == "text":
+            display_text += block.text
+        elif block.type == "tool_use" and block.name == "submit_diagnostic_data":
+            data              = block.input
+            session_update    = data.get("session_update", {})
+            questions         = data.get("questions", [])
+            confidence        = data.get("knowledge_confidence", "high")
+            confidence_reason = data.get("confidence_reason", "")
+
+    return display_text.strip(), session_update, questions, confidence, confidence_reason
+
 
 def _build_system_prompt(
     context_snapshot: str,
@@ -120,13 +170,11 @@ def _build_system_prompt(
     session_state: dict,
     user_role: str,
 ) -> str:
-    # Role-specific depth instruction
     if user_role == "SME":
         role_instruction = (
-            "You are communicating with a SENIOR MAINTENANCE ENGINEER / SUBJECT MATTER EXPERT. "
+            "You are communicating with a SENIOR MAINTENANCE ENGINEER. "
             "Provide deep technical analysis: reference tolerance values, failure modes, "
-            "regulatory standards (EN, IEC), and component-level root cause reasoning. "
-            "Do not over-explain basic procedures."
+            "regulatory standards (EN, IEC), and component-level root cause reasoning."
         )
     else:
         role_instruction = (
@@ -136,7 +184,6 @@ def _build_system_prompt(
             "Reference specific values from the retrieved knowledge."
         )
 
-    # Progress section
     steps  = session_state.get("completed_steps", [])
     causes = session_state.get("likely_causes", [])
     hypo   = session_state.get("current_hypothesis", "")
@@ -156,7 +203,7 @@ Your role is to guide engineers through systematic, evidence-based fault diagnos
 
 {role_instruction}
 
-=== CURRENT SESSION CONTEXT (DO NOT RE-ASK THESE BASICS) ===
+=== CURRENT SESSION CONTEXT (DO NOT RE-ASK THESE) ===
 {context_snapshot}
 {evidence_text}
 {measurement_text}
@@ -166,49 +213,23 @@ Your role is to guide engineers through systematic, evidence-based fault diagnos
 1. Never ask questions already answered in the session context above.
 2. Start at the right diagnostic depth — skip generic questions.
 3. Be systematic: most-likely causes first, safety checks before invasive tests.
-4. Interpret every measurement immediately against reference values.
-5. Cite specifications from the retrieved technical knowledge.
-6. Prioritise safety — flag critical conditions explicitly.
-7. At the end of EVERY response, include this structured JSON block:
+4. Interpret every measurement immediately against reference values from the knowledge.
+5. Cite specifications from the retrieved technical knowledge when relevant.
+6. Prioritise safety — flag critical conditions explicitly in your prose.
+7. You MUST call the submit_diagnostic_data tool in EVERY response. Write your prose explanation first, then call the tool.
+8. Do NOT write questions in your prose — all questions go in the tool call questions array.
+9. Keep prose to 2–4 sentences: explain the diagnostic reasoning and what the answers will reveal.
+10. When sufficient evidence is gathered, recommend generating the fault report.
+11. Tone: professional, precise, industrial.
 
-```json
-{{
-  "session_update": {{
-    "completed_steps": ["step already done 1", "step already done 2"],
-    "likely_causes": ["cause A", "cause B"],
-    "current_hypothesis": "brief current theory",
-    "probable_cause_flag": false,
-    "unresolved_flag": false,
-    "safety_concern_flag": false
-  }}
-}}
-```
-
-Set probable_cause_flag=true when you have sufficient evidence to name a root cause.
-Set unresolved_flag=true after 8+ turns without identifying a probable cause.
-Set safety_concern_flag=true when a safety-critical condition is suspected.
-
-8. Guide toward diagnosis — each question must have a stated purpose.
-9. When sufficient evidence is gathered, recommend generating the fault report.
-10. Tone: professional, precise, industrial."""
-
-
-def _extract_session_update(text: str) -> dict:
-    try:
-        match = re.search(r"```json\s*(.*?)\s*```", text, re.DOTALL)
-        if match:
-            data = json.loads(match.group(1))
-            return data.get("session_update", {})
-    except (json.JSONDecodeError, AttributeError):
-        pass
-    return {}
-
-
-def _clean_response_text(text: str) -> str:
-    cleaned = re.sub(r"```json\s*.*?```", "", text, flags=re.DOTALL)
-    return cleaned.strip()
+Question types for the tool:
+- yesno: Yes/No checks (rendered as radio buttons)
+- number: measurements with a unit (rendered as number input)
+- choice: fixed options (rendered as dropdown, include options array)
+- text: open observations (rendered as text area)"""
 
 
 def _extract_field(snapshot: str, field_label: str) -> str:
+    import re
     match = re.search(rf"{re.escape(field_label)}:\s*(.+)", snapshot)
     return match.group(1).strip() if match else ""

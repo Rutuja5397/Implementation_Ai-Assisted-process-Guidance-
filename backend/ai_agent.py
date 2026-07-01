@@ -121,48 +121,64 @@ Error Messages:     {error_messages or 'None reported'}
 4. **Interpret measurements immediately.** When the engineer provides voltage, current, temperature, etc., compare against the reference values in the retrieved knowledge and state whether they are normal, warning, or fault-level.
 5. **Reference technical knowledge.** When you recommend a check, reference the relevant specification from the retrieved knowledge (e.g., "The hoist brake air gap should be 0.2–0.3 mm per the Demag specification").
 6. **Prioritise safety.** Always flag safety-critical issues immediately. If you detect a situation where crane operation could be dangerous, state this clearly and recommend immediate shutdown.
-7. **Return structured data at the end of EVERY response.** Include this JSON block:
-
-```json
-{{
-  "session_update": {{
-    "completed_steps": ["step1", "step2"],
-    "likely_causes": ["cause1", "cause2"],
-    "current_hypothesis": "brief current theory"
-  }},
-  "questions": [
-    {{"text": "Is the main isolator confirmed ON?", "type": "yesno"}},
-    {{"text": "What voltage do you read at L1?", "type": "number", "unit": "V"}},
-    {{"text": "Which phase shows the fault?", "type": "choice", "options": ["L1", "L2", "L3", "All phases"]}},
-    {{"text": "Describe any unusual observations:", "type": "text"}}
-  ],
-  "knowledge_confidence": "high",
-  "confidence_reason": ""
-}}
-```
-
-**`knowledge_confidence` values:**
-- `"high"` — retrieved knowledge directly covers this diagnostic step
-- `"medium"` — retrieved knowledge is partially relevant; guidance may be incomplete
-- `"low"` — retrieved knowledge does not cover this specific fault or procedure; guidance is based on general principles only. Set `confidence_reason` to a short phrase describing what is missing (e.g. "No winding resistance procedure found for this motor type").
-
-**Question types — choose the most appropriate:**
-- `"yesno"` — Yes/No questions (rendered as radio buttons)
-- `"number"` — voltage, current, temperature, resistance readings (rendered as number input with unit)
-- `"choice"` — fixed set of options (rendered as dropdown); include an `"options"` list
-- `"text"` — open observations or descriptions (rendered as text area)
-
-**CRITICAL RULE:** Do NOT write questions anywhere in your prose explanation text. Every question you want the engineer to answer MUST appear in the `questions` array.
-
-**Your prose MUST include:** the reasoning behind this diagnostic step, what specific values or signs to look for, why each check matters, and what the answer will tell you. Write at least 2–3 sentences of diagnostic explanation before the JSON block. The engineer needs to understand what they are doing and why — not just receive a blank form.
-
-8. **Guide toward diagnosis.** Explain the diagnostic logic clearly in prose. Each question in the array should serve a clear purpose — the engineer will answer them via structured form widgets.
+7. **You MUST call the `submit_diagnostic_data` tool in every response.** Write your prose explanation first, then call the tool with the structured data. The tool captures the questions the engineer must answer — do NOT write questions in your prose.
+8. **Guide toward diagnosis.** Explain the diagnostic logic clearly in prose (2–4 sentences). Each question in the tool call should serve a clear purpose.
 9. **When sufficient data is collected**, synthesise a diagnosis and recommend the `generate_report` action to the engineer.
 10. **Tone:** Professional, precise, technical. This is an industrial setting, not a general chatbot.
 
 Begin your diagnostic sequence now based on the component and problem described above."""
 
     return system_prompt
+
+
+# ─── Tool definition (structured output via tool_use) ────────────────────────
+
+DIAGNOSTIC_TOOL = {
+    "name": "submit_diagnostic_data",
+    "description": (
+        "Submit structured diagnostic data for this troubleshooting step. "
+        "Call this ONCE per response with the questions for the engineer and the session state update."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "session_update": {
+                "type": "object",
+                "properties": {
+                    "completed_steps": {"type": "array", "items": {"type": "string"}},
+                    "likely_causes":   {"type": "array", "items": {"type": "string"}},
+                    "current_hypothesis": {"type": "string"},
+                },
+                "required": ["completed_steps", "likely_causes", "current_hypothesis"],
+            },
+            "questions": {
+                "type": "array",
+                "description": "Structured questions for the engineer to answer via form widgets.",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "text":    {"type": "string", "description": "The question text"},
+                        "type":    {"type": "string", "enum": ["yesno", "number", "choice", "text"]},
+                        "unit":    {"type": "string", "description": "Unit for number questions, e.g. V, A, mm"},
+                        "options": {"type": "array", "items": {"type": "string"},
+                                    "description": "Options list for choice questions"},
+                    },
+                    "required": ["text", "type"],
+                },
+            },
+            "knowledge_confidence": {
+                "type": "string",
+                "enum": ["high", "medium", "low"],
+                "description": "high=KB covers this step directly; medium=partial; low=not covered",
+            },
+            "confidence_reason": {
+                "type": "string",
+                "description": "If low confidence, describe what is missing from the knowledge base.",
+            },
+        },
+        "required": ["session_update", "questions", "knowledge_confidence"],
+    },
+}
 
 
 # ─── Main AI function ─────────────────────────────────────────────────────────
@@ -230,20 +246,18 @@ def get_ai_response(
 
     response = client.messages.create(
         model="claude-sonnet-4-6",
-        max_tokens=1500,
+        max_tokens=2500,
         temperature=0.2,
         system=system_prompt,
         messages=messages,
+        tools=[DIAGNOSTIC_TOOL],
+        tool_choice={"type": "any"},
     )
 
-    response_text = response.content[0].text
-
-    session_update, questions, confidence, confidence_reason = _extract_structured_data(response_text)
-    display_text = _clean_response_text(response_text)
+    display_text, session_update, questions, confidence, confidence_reason = _parse_tool_response(response)
 
     return {
         "response_text": display_text,
-        "raw_response": response_text,
         "session_update": session_update,
         "questions": questions,
         "knowledge_confidence": confidence,
@@ -299,15 +313,15 @@ def generate_opening_message(session_data: Dict[str, Any]) -> Dict[str, Any]:
 
     response = client.messages.create(
         model="claude-sonnet-4-6",
-        max_tokens=1200,
+        max_tokens=2500,
         temperature=0.2,
         system=system_prompt,
         messages=[{"role": "user", "content": opening_request}],
+        tools=[DIAGNOSTIC_TOOL],
+        tool_choice={"type": "any"},
     )
 
-    response_text = response.content[0].text
-    session_update, questions, confidence, confidence_reason = _extract_structured_data(response_text)
-    display_text = _clean_response_text(response_text)
+    display_text, session_update, questions, confidence, confidence_reason = _parse_tool_response(response)
 
     return {
         "response_text": display_text,
@@ -321,28 +335,24 @@ def generate_opening_message(session_data: Dict[str, Any]) -> Dict[str, Any]:
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
-def _extract_structured_data(text: str):
-    """Extract session_update, questions, and knowledge_confidence from the AI JSON block.
-    Returns (session_update: dict, questions: list, confidence: str, confidence_reason: str).
+def _parse_tool_response(response):
+    """Parse a Claude response that uses tool_use.
+    Returns (display_text, session_update, questions, confidence, confidence_reason).
     """
-    try:
-        import re
-        pattern = r"```json\s*(.*?)\s*```"
-        match = re.search(pattern, text, re.DOTALL)
-        if match:
-            data = json.loads(match.group(1))
-            session_update = data.get("session_update", {})
-            questions = data.get("questions", [])
-            confidence = data.get("knowledge_confidence", "high")
+    display_text = ""
+    session_update = {}
+    questions = []
+    confidence = "high"
+    confidence_reason = ""
+
+    for block in response.content:
+        if block.type == "text":
+            display_text += block.text
+        elif block.type == "tool_use" and block.name == "submit_diagnostic_data":
+            data = block.input
+            session_update    = data.get("session_update", {})
+            questions         = data.get("questions", [])
+            confidence        = data.get("knowledge_confidence", "high")
             confidence_reason = data.get("confidence_reason", "")
-            return session_update, questions, confidence, confidence_reason
-    except (json.JSONDecodeError, AttributeError):
-        pass
-    return {}, [], "high", ""
 
-
-def _clean_response_text(text: str) -> str:
-    """Remove the JSON block from the display text."""
-    import re
-    cleaned = re.sub(r"```json\s*.*?```", "", text, flags=re.DOTALL)
-    return cleaned.strip()
+    return display_text.strip(), session_update, questions, confidence, confidence_reason
