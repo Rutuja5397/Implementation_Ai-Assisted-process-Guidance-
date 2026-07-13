@@ -58,11 +58,23 @@ class RetrievalAgent(BaseAgent):
             n_results=self.N_TOTAL,
         )
 
-        # Flag knowledge gap if component-filtered retrieval produced nothing
+        # Component-specific chunks
         component_chunks = [c for c in chunks
                             if c.get("component", "").lower() in component_key.lower()
                             or component_key.lower() in c.get("component", "").lower()]
-        gap = len(component_chunks) == 0 and bool(component_key)
+
+        # Gap detection using relevance scores (LLM-independent)
+        # Threshold: cosine similarity < 0.45 means KB lacks relevant content
+        KB_GAP_THRESHOLD = 0.45
+        if component_chunks:
+            max_relevance = max(c.get("relevance_score", 0) for c in component_chunks)
+        elif chunks:
+            max_relevance = max(c.get("relevance_score", 0) for c in chunks)
+        else:
+            max_relevance = 0.0
+
+        gap = (len(component_chunks) == 0 and bool(component_key)) or \
+              (max_relevance < KB_GAP_THRESHOLD and bool(component_key))
 
         return {
             "evidence_chunks": chunks,
@@ -71,5 +83,7 @@ class RetrievalAgent(BaseAgent):
                 "query_used": query_terms,
                 "chunks_returned": len(chunks),
                 "component_filtered_count": len(component_chunks),
+                "max_relevance_score": round(max_relevance, 3),
+                "kb_gap_detected": gap,
             },
         }

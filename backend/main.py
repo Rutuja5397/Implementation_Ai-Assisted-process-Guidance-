@@ -13,6 +13,7 @@ from typing import List, Optional
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, status
+from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
@@ -214,6 +215,12 @@ def create_session(
         db.commit()
         opening_message = ai_result["response_text"]
         evidence = ai_result.get("retrieved_evidence", [])
+
+        # Store KB gap indicator in agent_metadata so the UI can display it
+        meta = ai_result.get("agent_metadata") or {}
+        meta["kb_gap_at_session_start"] = ai_result.get("knowledge_gap_indicator", False)
+        session.agent_metadata = __import__("json").dumps(meta)
+        db.commit()
     except Exception as e:
         logger.error(f"AI opening message failed: {e}")
         opening_message = (
@@ -598,9 +605,14 @@ def add_expert_annotation(
 # KNOWLEDGE GAP ENDPOINT
 # ═══════════════════════════════════════════════════════════════════
 
+class FlagGapRequest(BaseModel):
+    missing_information: Optional[str] = None
+
+
 @app.post("/sessions/{session_id}/flag-knowledge-gap")
 def flag_knowledge_gap(
     session_id: int,
+    body: FlagGapRequest = FlagGapRequest(),
     current_user: models.User = Depends(require_permission(P_SESSION_FLAG_GAP)),
     db: Session = Depends(get_db),
 ):
@@ -624,7 +636,11 @@ def flag_knowledge_gap(
         component_key=session.component,
         fault_pattern=session.problem_description[:200],
         gap_type="no_matching_content",
-        suggested_action="Review knowledge base for this component and fault pattern.",
+        missing_information=body.missing_information,
+        suggested_action=(
+            body.missing_information[:200] if body.missing_information
+            else "Review knowledge base for this component and fault pattern."
+        ),
         status="open",
     )
     db.add(gap)

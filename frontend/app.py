@@ -483,6 +483,19 @@ def _nav(screen: str):
 # ═══════════════════════════════════════════════════════════════════
 
 def screen_login():
+    # Suppress browser "save/change password" prompts by marking fields as non-credential inputs
+    import streamlit.components.v1 as _components
+    _components.html("""
+    <script>
+    setTimeout(function() {
+        var doc = window.parent.document;
+        doc.querySelectorAll('input[type="password"]').forEach(function(el) {
+            el.setAttribute('autocomplete', 'new-password');
+        });
+    }, 300);
+    </script>
+    """, height=0)
+
     col_left, col_center, col_right = st.columns([1, 2, 1])
 
     with col_center:
@@ -884,7 +897,7 @@ def _render_assistant_message(content: str, confidence: str = "high", confidence
 
 
 def _render_structured_input(session_id: int, is_closed: bool, lifecycle: str):
-    """Render the engineer response area — plain text area for free-form observations."""
+    """Render AI questions and engineer response area."""
     if is_closed or not _has_role("ME", "SME"):
         if is_closed:
             st.info("Session closed. View the generated report in the Dashboard.")
@@ -956,6 +969,7 @@ def screen_guidance():
             "likely_causes":      _parse_list(sdata.get("likely_causes")),
             "current_hypothesis": sdata.get("current_hypothesis"),
             "escalation_reason":  sdata.get("escalation_reason"),
+            "agent_metadata":     sdata.get("agent_metadata"),
         }
     else:
         lifecycle = st.session_state.session_state_data.get("lifecycle_state", "IN_PROGRESS")
@@ -965,26 +979,41 @@ def screen_guidance():
     is_closed = lifecycle == "CLOSED_WITH_REPORT"
     readonly = st.session_state.get("guidance_readonly", False)
 
-    # ── Knowledge-updated banner ──────────────────────────────────
-    # Show when the session was previously in KNOWLEDGE_GAP_FLAGGED and is now
-    # back to IN_PROGRESS — meaning a KE has resolved the gap.
-    if lifecycle == "IN_PROGRESS" and _has_role("ME", "SME"):
-        # Check if there is a resolved gap for this session
+    # ── Banners: KB gap warning OR KB updated (mutually exclusive) ──
+    _resolved_gap = None
+    try:
+        gaps_resp = api("get", f"/knowledge-gaps?include_resolved=true")
+        if gaps_resp.status_code == 200:
+            _session_gaps = [
+                g for g in gaps_resp.json()
+                if g.get("session_id") == session_id
+            ]
+            _resolved = [g for g in _session_gaps if g.get("status") == "resolved"]
+            if _resolved:
+                _resolved_gap = _resolved[0]
+    except Exception:
+        pass
+
+    if _resolved_gap:
+        # KB was updated by KE — show green banner only
+        st.success(
+            f"✅ **Knowledge base updated!** A Knowledge Engineer has resolved the "
+            f"knowledge gap for **{_resolved_gap.get('component_key', '')}** "
+            f"(Gap #{_resolved_gap.get('id')}). "
+            f"You can now continue diagnosis — the AI has access to the updated knowledge."
+        )
+    else:
+        # No resolved gap — check if KB coverage was low at session start
         try:
-            gaps_resp = api("get", f"/knowledge-gaps?include_resolved=true")
-            if gaps_resp.status_code == 200:
-                session_gaps = [
-                    g for g in gaps_resp.json()
-                    if g.get("session_id") == session_id and g.get("status") == "resolved"
-                ]
-                if session_gaps:
-                    latest_gap = session_gaps[0]
-                    st.success(
-                        f"✅ **Knowledge base updated!** A Knowledge Engineer has resolved the "
-                        f"knowledge gap for **{latest_gap.get('component_key', '')}** "
-                        f"(Gap #{latest_gap.get('id')}). "
-                        f"You can now continue diagnosis — the AI has access to the updated knowledge."
-                    )
+            import json as _json
+            _meta = _json.loads(ssd.get("agent_metadata") or "{}")
+            if _meta.get("kb_gap_at_session_start"):
+                st.warning(
+                    "⚠️ **Low knowledge base coverage detected** — the knowledge base has limited "
+                    f"content for **{ssd.get('component', '')}** with this problem description. "
+                    "AI guidance may rely on general knowledge rather than approved documentation. "
+                    "Consider escalating to SME to flag a knowledge gap."
+                )
         except Exception:
             pass
 
@@ -1146,7 +1175,7 @@ def screen_guidance():
 
         # Tab 1: Measurements
         with right_tabs[0]:
-            _render_measurement_tab(session_id)
+            _render_measurement_tab(session_id, readonly=readonly)
 
         # Tab 2: Evidence
         with right_tabs[1]:
@@ -1212,17 +1241,70 @@ def _render_sme_action_bar(session_id: int, lifecycle: str, ssd: dict):
 
     with ac3:
         if lifecycle == "SME_IN_REVIEW":
+            flag_key = f"_show_flag_gap_dialog_{session_id}"
             if st.button("⚠️ Flag Knowledge Gap", use_container_width=True):
-                resp = api("post", f"/sessions/{session_id}/flag-knowledge-gap")
-                if handle_api_error(resp, "Failed to flag gap"):
-                    st.success("Knowledge gap flagged.")
-                    st.rerun()
+                st.session_state[flag_key] = True
 
     with ac4:
         st.markdown("")  # spacer
 
+    # KB gap flag dialog — shown below the action bar
+    flag_key = f"_show_flag_gap_dialog_{session_id}"
+    if st.session_state.get(flag_key):
+        st.markdown("""
+        <div class="action-panel action-panel-sme" style="margin-top:8px;">
+            <b style="color:#5b21b6;">⚠️ Flag Knowledge Gap</b>
+        </div>
+        """, unsafe_allow_html=True)
+        with st.form(f"flag_gap_form_{session_id}"):
+            missing_info = st.text_area(
+                "What information is missing from the knowledge base?",
+                placeholder="e.g. No UPS fault codes in power_supply.txt — F-21 meaning unknown. KB needs UPS sizing guidance and fault code definitions.",
+                height=100,
+            )
+            col_s, col_c = st.columns(2)
+            with col_s:
+                submitted = st.form_submit_button("Submit Gap", type="primary", use_container_width=True)
+            with col_c:
+                cancelled = st.form_submit_button("Cancel", use_container_width=True)
 
-def _render_measurement_tab(session_id: int):
+            if submitted:
+                if not missing_info.strip():
+                    st.error("Please describe what information is missing.")
+                else:
+                    resp = api("post", f"/sessions/{session_id}/flag-knowledge-gap",
+                               json={"missing_information": missing_info.strip()})
+                    if handle_api_error(resp, "Failed to flag gap"):
+                        st.success("Knowledge gap flagged — KE has been notified.")
+                        st.session_state[flag_key] = False
+                        st.rerun()
+            if cancelled:
+                st.session_state[flag_key] = False
+                st.rerun()
+
+
+def _render_measurement_tab(session_id: int, readonly: bool = False):
+    if readonly:
+        st.markdown('<div class="section-header">Recorded Measurements</div>', unsafe_allow_html=True)
+        resp = api("get", f"/sessions/{session_id}/measurements")
+        if resp.status_code == 200:
+            mlist = resp.json()
+            if mlist:
+                for m in mlist:
+                    parts = []
+                    if m.get("voltage") is not None:       parts.append(f"**V:** {m['voltage']} V")
+                    if m.get("current") is not None:       parts.append(f"**I:** {m['current']} A")
+                    if m.get("temperature") is not None:   parts.append(f"**T:** {m['temperature']} °C")
+                    if m.get("load") is not None:          parts.append(f"**Load:** {m['load']} kg")
+                    if m.get("brake_gap") is not None:     parts.append(f"**Gap:** {m['brake_gap']} mm")
+                    if m.get("insulation_resistance") is not None: parts.append(f"**IR:** {m['insulation_resistance']} MΩ")
+                    if m.get("vibration") is not None:     parts.append(f"**Vib:** {m['vibration']} mm/s")
+                    if m.get("notes"):                     parts.append(f"*{m['notes']}*")
+                    st.markdown("  ·  ".join(parts) if parts else "—")
+            else:
+                st.caption("No measurements recorded in this session.")
+        return
+
     st.markdown('<div class="section-header">Record Measurements</div>', unsafe_allow_html=True)
 
     with st.form("measurement_form", clear_on_submit=True):
@@ -1830,17 +1912,33 @@ def _render_sme_inbox_card(entry: dict):
 def screen_knowledge_gaps():
     render_top_bar()
 
-    st.markdown("""
-    <div style="margin-bottom:16px;">
-        <h2 style="font-size:1.4rem; font-weight:700; color:#1a1f36; margin:0 0 4px 0;">
-            🔍 Knowledge Gap Management
-        </h2>
-        <p style="color:#6b7280; font-size:0.9rem; margin:0;">
-            Cases where the knowledge base lacked sufficient content.
-            Review, update the knowledge file, and resolve to let the engineer continue diagnosis.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+    _role_val = _role()
+    if _role_val == "KE":
+        st.markdown("""
+        <div style="margin-bottom:16px;">
+            <h2 style="font-size:1.4rem; font-weight:700; color:#1a1f36; margin:0 0 4px 0;">
+                🔧 Knowledge Gap Resolution
+            </h2>
+            <p style="color:#6b7280; font-size:0.9rem; margin:0;">
+                Gaps flagged during engineer sessions where the knowledge base had insufficient content.
+                Your task: review the session, update the relevant knowledge file, and mark the gap resolved
+                so the engineer can continue with improved AI guidance.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <div style="margin-bottom:16px;">
+            <h2 style="font-size:1.4rem; font-weight:700; color:#1a1f36; margin:0 0 4px 0;">
+                🔍 Knowledge Gap Overview
+            </h2>
+            <p style="color:#6b7280; font-size:0.9rem; margin:0;">
+                Sessions where the AI had limited knowledge base coverage.
+                These are flagged for Knowledge Engineers to resolve. You can view the original session
+                for context.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
 
     show_resolved = st.checkbox("Show resolved gaps", value=False)
 
@@ -1922,7 +2020,9 @@ def screen_knowledge_gaps():
         </div>
         """, unsafe_allow_html=True)
 
-        if is_ke and gap_status != "resolved":
+        if is_ke and gap_status != "resolved" and session_id:
+            btn_cols = st.columns([1, 1, 4])
+        elif is_ke and gap_status != "resolved":
             btn_cols = st.columns([1, 5])
         elif not is_ke and session_id:
             btn_cols = st.columns([1, 5])
@@ -1943,7 +2043,7 @@ def screen_knowledge_gaps():
                     st.session_state.screen = "guidance"
                     st.rerun()
 
-        # KE-only: resolve button opens editor
+        # KE-only: resolve button + view session button
         if is_ke and gap_status != "resolved":
             with btn_cols[0]:
                 expand_key = f"ke_resolve_open_{gap_id}"
@@ -1951,6 +2051,20 @@ def screen_knowledge_gaps():
                     st.session_state[expand_key] = False
                 if st.button("✏️ Update & Resolve", key=f"ke_resolve_btn_{gap_id}", use_container_width=True):
                     st.session_state[expand_key] = not st.session_state[expand_key]
+
+            if session_id and len(btn_cols) > 2:
+                with btn_cols[1]:
+                    if st.button("📂 View Session", key=f"ke_gap_view_{gap_id}", use_container_width=True):
+                        st.session_state.current_session_id = session_id
+                        st.session_state.guidance_readonly = True
+                        msgs_resp = api("get", f"/sessions/{session_id}/messages")
+                        if msgs_resp.status_code == 200:
+                            st.session_state.messages = [
+                                {"role": m["role"], "content": m["content"]}
+                                for m in msgs_resp.json()
+                            ]
+                        st.session_state.screen = "guidance"
+                        st.rerun()
 
             if st.session_state.get(f"ke_resolve_open_{gap_id}", False):
                 _render_ke_resolve_form(gap)

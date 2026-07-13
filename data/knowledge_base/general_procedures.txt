@@ -107,3 +107,59 @@ Multimeter should be avilable in oerder to measure the voltage
 === KNOWLEDGE UPDATE (2026-04-27 — added by KE: Demo KE) ===
 Safety-critical maintenance procedures for wire rope systems must be carried out exclusively by competent personnel with appropriate training and experience, in accordance with standards such as EN 13001 and applicable local regulations. In cases of suspected rope damage, a comprehensive inspection is required, including measurement of wire breaks, evaluation of diameter reduction, and examination of the entire rope length, including drum wraps and termination points. Additionally, associated components such as drum grooves, sheaves, and rope anchor points must be inspected for any secondary damage. If defects are confirmed, rope replacement must be performed using the correct specification, ensuring proper installation and pre-load commissioning. Finally, a post-installation inspection and formal sign-off are mandatory before the crane can be safely returned to service.
 === END UPDATE ===
+
+
+
+
+=== KNOWLEDGE UPDATE (2026-06-23 — added by KE: Demo KE) ===
+=== ROTARY CAM LIMIT SWITCH — ADJUSTMENT PROCEDURE (Post Rope Re-spooling) ===
+
+After hoist rope replacement or re-spooling, the rotary cam position must be reset
+because the drum reset changes the relative cam-to-drum alignment.
+
+TOOLS REQUIRED: 3mm Allen key (for cam grub screws), permanent marker, feeler gauge (optional)
+
+IDENTIFYING THE CAMS:
+The cam shaft is mounted on the side of the drum gearbox or drum frame.
+Typical cam layout (front to back on shaft):
+  - Cam 1 (closest to motor): Upper hoist limit — stops UP direction
+  - Cam 2: Lower hoist limit — stops DOWN direction (slack rope protection)
+  - Cam 3 (if present): Intermediate slow-down cam (yellow, pre-limit warning)
+Do NOT adjust Cam 2 or Cam 3 unless required. Mark each cam with a marker before adjusting.
+
+ADJUSTMENT STEPS — UPPER LIMIT CAM (Cam 1):
+1. LOTO: isolate crane power and lock out.
+2. Manually lower the hook to mid-travel position (away from both limits).
+3. Locate cam shaft — loosen Cam 1 grub screw (do not remove).
+4. Physically raise the hook block by hand (or slowly with power briefly restored
+   under direct supervision) to the desired stop position: 300mm minimum clearance
+   below hoist body.
+5. At this exact hook position, rotate Cam 1 on the shaft until its lobe contacts
+   and depresses the limit switch roller — you will hear/feel the switch click.
+6. Hold cam in this position and tighten the grub screw firmly.
+7. Lower hook back to mid-travel.
+8. Restore power. Slowly raise hook in UP direction.
+9. Hook must stop at the position set in step 4.
+10. Verify DOWN direction still operates normally after limit activation.
+11. Record: date, technician, cam position, clearance measured.
+
+COMMON MISTAKES:
+- Adjusting Cam 2 instead of Cam 1 — will break lower limit protection
+- Grub screw not fully tightened — cam shifts during operation
+- Setting clearance less than 300mm — violates EN 14502 safety requirement
+- Not testing DOWN direction after adjustment — critical verification step
+=== END UPDATE ===
+
+
+
+
+=== KNOWLEDGE UPDATE (2026-07-02 — added by KE: Demo KE) ===
+=== UPS BACKUP POWER — FAULT CODES AND SIZING ===
+F-21 — Battery overload: Connected load exceeds UPS rated output.
+        Action: Check UPS kVA rating against crane control panel load.
+        Crane control systems typically require 3–5 kVA UPS minimum.
+        Reduce load or replace UPS with correctly rated unit.
+
+UPS sizing rule: UPS kVA rating must be >= 1.25 × crane control panel load (kVA).
+Battery check: Run UPS self-test monthly. Replace battery every 3–5 years.
+=== END UPDATE ===

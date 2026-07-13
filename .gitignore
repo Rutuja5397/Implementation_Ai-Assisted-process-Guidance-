@@ -27,3 +27,20 @@ chroma_db/
 
 # Logs
 *.log
+
+# Editor / IDE
+.vscode/
+.idea/
+
+# Backup files
+*.backup
+*.bak
+
+# Test knowledge base copies
+data/knowledge_base_test/
+
+# Generated files
+generate_thesis_ppt.py
+Thesis_Defence_Presentation.pptx
+BEGINNER_TEST_CASE.md
+DEMO_TEST_GUIDE.md

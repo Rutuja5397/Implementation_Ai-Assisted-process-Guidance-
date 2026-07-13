@@ -342,7 +342,7 @@ class SessionOrchestrator:
             "conversation_history":   conversation_history,
             "lifecycle_state":        lifecycle_state,
             "knowledge_gap_indicator": False,
-            "retrieval_chunk_count":  0,
+            "retrieval_chunk_count":  None,  # not re-run at report time; None = skip no_specs check
             "retrieved_evidence":     [],   # full evidence list not replayed at report time
             "session_resolved":       session_resolved,
             "current_hypothesis":     session_data.get("current_hypothesis"),

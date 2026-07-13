@@ -97,6 +97,7 @@ class SessionOut(BaseModel):
     escalated_to: Optional[int]
     escalation_reason: Optional[str]
     escalated_at: Optional[datetime]
+    agent_metadata: Optional[str]
     created_at: datetime
     updated_at: datetime
 

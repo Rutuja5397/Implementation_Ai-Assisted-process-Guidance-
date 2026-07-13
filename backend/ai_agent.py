@@ -28,6 +28,21 @@ def get_rag() -> RAGSystem:
 
 # ─── System prompt builder ────────────────────────────────────────────────────
 
+def _extract_error_codes(error_messages: str) -> List[str]:
+    """Extract fault/error code patterns like E07, ERR-3, F21, FC47 from free text."""
+    if not error_messages:
+        return []
+    import re
+    codes = re.findall(r'\b[A-Z]{1,4}[-\s]?\d{1,4}\b', error_messages, re.IGNORECASE)
+    return list({c.upper() for c in codes})
+
+
+def _codes_missing_from_chunks(codes: List[str], rag_chunks: List[Dict[str, Any]]) -> List[str]:
+    """Return codes that do not appear in any retrieved KB chunk."""
+    all_text = " ".join(c.get("content", "") for c in rag_chunks).upper()
+    return [c for c in codes if c.upper() not in all_text]
+
+
 def build_system_prompt(
     crane_type: str,
     component: str,
@@ -50,6 +65,23 @@ def build_system_prompt(
                 f"\n[Source {i}: {chunk['component']} – {chunk['source']}]\n"
                 f"{chunk['content']}\n"
             )
+
+    # Check if any reported error codes are absent from the retrieved KB chunks
+    unknown_codes = _codes_missing_from_chunks(
+        _extract_error_codes(error_messages or ""),
+        rag_chunks,
+    )
+    if unknown_codes:
+        rag_section += (
+            f"\n\n=== KB SEARCH RESULT — ERROR CODES ===\n"
+            f"The following error code(s) reported by the engineer were searched across ALL "
+            f"knowledge base documents but were NOT FOUND: {', '.join(unknown_codes)}.\n"
+            f"You MUST NOT interpret or explain these codes using general or training knowledge. "
+            f"Respond with: 'Error code {unknown_codes[0]} is not documented in this system's "
+            f"knowledge base. This is a knowledge gap — please escalate so the knowledge base "
+            f"can be updated with the correct definition for this fault code.' "
+            f"Set knowledge_confidence to 'low'.\n"
+        )
 
     # Format measurements
     meas_section = ""
@@ -101,6 +133,9 @@ def build_system_prompt(
 
     system_prompt = f"""You are an expert crane maintenance AI assistant integrated into an industrial troubleshooting system. Your role is to guide qualified engineers through systematic, evidence-based diagnosis of crane faults.
 
+=== KNOWLEDGE BOUNDARY — CRITICAL CONSTRAINT ===
+You MUST base ALL diagnostic guidance, specifications, thresholds, and procedures EXCLUSIVELY on the content in the RETRIEVED TECHNICAL KNOWLEDGE section below. Do NOT use general engineering knowledge, manufacturer data, or training data that is not present in the retrieved knowledge. If the retrieved knowledge does not cover a specific check or value, explicitly state: "This information is not in the knowledge base" and set knowledge_confidence to "low". This constraint exists because this system operates in industrial environments where only approved, organisation-specific documentation is authoritative.
+
 === CURRENT SESSION CONTEXT (DO NOT RE-ASK THESE BASICS) ===
 Crane:              {crane_type}
 Component:          {component}
@@ -116,69 +151,62 @@ Error Messages:     {error_messages or 'None reported'}
 === YOUR BEHAVIOUR RULES ===
 
 1. **DO NOT ask questions already answered above.** The engineer has provided the context above - respect their time.
-2. **Start at the right diagnostic depth.** You know the crane, component, and problem - skip generic questions and ask targeted, specific diagnostic questions.
-3. **Be systematic.** Follow a logical troubleshooting sequence: most likely causes first, safety checks before invasive tests.
-4. **Interpret measurements immediately.** When the engineer provides voltage, current, temperature, etc., compare against the reference values in the retrieved knowledge and state whether they are normal, warning, or fault-level.
-5. **Reference technical knowledge.** When you recommend a check, reference the relevant specification from the retrieved knowledge (e.g., "The hoist brake air gap should be 0.2–0.3 mm per the Demag specification").
-6. **Prioritise safety.** Always flag safety-critical issues immediately. If you detect a situation where crane operation could be dangerous, state this clearly and recommend immediate shutdown.
-7. **You MUST call the `submit_diagnostic_data` tool in every response.** Write your prose explanation first, then call the tool with the structured data. The tool captures the questions the engineer must answer — do NOT write questions in your prose.
-8. **Guide toward diagnosis.** Explain the diagnostic logic clearly in prose (2–4 sentences). Each question in the tool call should serve a clear purpose.
-9. **When sufficient data is collected**, synthesise a diagnosis and recommend the `generate_report` action to the engineer.
-10. **Tone:** Professional, precise, technical. This is an industrial setting, not a general chatbot.
+2. **Progress from simple to complex.** Always start with the most likely, simplest check first. Follow this order: visual inspection → operational status checks → basic electrical checks → measurements → invasive tests. Do NOT jump straight to voltage or resistance readings if a simpler check can rule out the cause.
+3. **Ask ONE question per turn.** Pick the single most important question for this diagnostic step. Do not ask multiple questions at once — the engineer answers one at a time, and each answer should guide the next step.
+4. **Be systematic.** Follow a logical troubleshooting sequence: most likely causes first, safety checks before invasive tests.
+5. **Interpret measurements immediately.** When the engineer provides voltage, current, temperature, etc., compare against the reference values in the retrieved knowledge and state whether they are normal, warning, or fault-level.
+6. **Reference technical knowledge.** When you recommend a check, reference the relevant specification from the retrieved knowledge (e.g., "The hoist brake air gap should be 0.2–0.3 mm per the Demag specification").
+7. **Prioritise safety.** Always flag safety-critical issues immediately. If you detect a situation where crane operation could be dangerous, state this clearly and recommend immediate shutdown.
+8. **Return structured data at the end of EVERY response.** Include this JSON block:
+
+```json
+{{
+  "session_update": {{
+    "completed_steps": ["step1"],
+    "likely_causes": ["cause1"],
+    "current_hypothesis": "brief current theory"
+  }},
+  "questions": [
+    {{"text": "Is the main isolator confirmed ON?", "type": "yesno"}}
+  ],
+  "knowledge_confidence": "high",
+  "confidence_reason": ""
+}}
+```
+
+**The `questions` array must contain exactly ONE question per response.** Choose the question that will most efficiently narrow down the fault at this stage.
+
+**`knowledge_confidence` values:**
+- `"high"` — retrieved knowledge directly covers this diagnostic step
+- `"medium"` — retrieved knowledge is partially relevant; guidance may be incomplete
+- `"low"` — retrieved knowledge does not cover this specific fault or procedure; guidance is based on general principles only. Set `confidence_reason` to a short phrase describing what is missing (e.g. "No winding resistance procedure found for this motor type").
+
+**Question types — choose the most appropriate:**
+- `"yesno"` — Yes/No questions (rendered as radio buttons)
+- `"number"` — voltage, current, temperature, resistance readings (rendered as number input with unit)
+- `"choice"` — fixed set of options (rendered as dropdown); include an `"options"` list
+- `"text"` — open observations or descriptions (rendered as text area)
+
+**CRITICAL RULE:** Do NOT write questions anywhere in your prose explanation text. The one question you want the engineer to answer MUST appear in the `questions` array only.
+
+**Your prose MUST include:** the reasoning behind this diagnostic step, what specific values or signs to look for, why this check matters, and what the answer will tell you. Write 2–3 sentences of diagnostic explanation before the JSON block.
+
+9. **Guide toward diagnosis.** Explain the diagnostic logic clearly in prose. The single question in the array should serve a clear purpose.
+10. **When sufficient data is collected**, synthesise a diagnosis and recommend the `generate_report` action to the engineer.
+11. **Tone:** Professional, precise, technical. This is an industrial setting, not a general chatbot.
+
+=== FORMATTING RULES ===
+- Use **bold** for key values, labels, and emphasis.
+- Use ### headings for section titles (e.g. ### Step 1 — Check Voltage).
+- Use numbered lists for sequential steps, bullet lists for options or findings.
+- Use markdown tables for comparisons (fault categories, measurement summaries, findings).
+- End each response with a clearly labelled question block: **Question:** followed by the question text, then **Purpose:** explaining why it matters.
+- Do NOT use blockquote syntax (lines starting with >). It renders poorly in this interface.
+- Do NOT wrap content in code blocks except for the required JSON block at the end.
 
 Begin your diagnostic sequence now based on the component and problem described above."""
 
     return system_prompt
-
-
-# ─── Tool definition (structured output via tool_use) ────────────────────────
-
-DIAGNOSTIC_TOOL = {
-    "name": "submit_diagnostic_data",
-    "description": (
-        "Submit structured diagnostic data for this troubleshooting step. "
-        "Call this ONCE per response with the questions for the engineer and the session state update."
-    ),
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "session_update": {
-                "type": "object",
-                "properties": {
-                    "completed_steps": {"type": "array", "items": {"type": "string"}},
-                    "likely_causes":   {"type": "array", "items": {"type": "string"}},
-                    "current_hypothesis": {"type": "string"},
-                },
-                "required": ["completed_steps", "likely_causes", "current_hypothesis"],
-            },
-            "questions": {
-                "type": "array",
-                "description": "Structured questions for the engineer to answer via form widgets.",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "text":    {"type": "string", "description": "The question text"},
-                        "type":    {"type": "string", "enum": ["yesno", "number", "choice", "text"]},
-                        "unit":    {"type": "string", "description": "Unit for number questions, e.g. V, A, mm"},
-                        "options": {"type": "array", "items": {"type": "string"},
-                                    "description": "Options list for choice questions"},
-                    },
-                    "required": ["text", "type"],
-                },
-            },
-            "knowledge_confidence": {
-                "type": "string",
-                "enum": ["high", "medium", "low"],
-                "description": "high=KB covers this step directly; medium=partial; low=not covered",
-            },
-            "confidence_reason": {
-                "type": "string",
-                "description": "If low confidence, describe what is missing from the knowledge base.",
-            },
-        },
-        "required": ["session_update", "questions", "knowledge_confidence"],
-    },
-}
 
 
 # ─── Main AI function ─────────────────────────────────────────────────────────
@@ -246,23 +274,28 @@ def get_ai_response(
 
     response = client.messages.create(
         model="claude-sonnet-4-6",
-        max_tokens=2500,
+        max_tokens=1500,
         temperature=0.2,
         system=system_prompt,
         messages=messages,
-        tools=[DIAGNOSTIC_TOOL],
-        tool_choice={"type": "auto"},
     )
 
-    display_text, session_update, questions, confidence, confidence_reason = _parse_tool_response(response)
+    response_text = response.content[0].text
+
+    session_update, questions, confidence, confidence_reason = _extract_structured_data(response_text)
+    display_text = _clean_response_text(response_text)
+    kb_gap, kb_score = _assess_kb_coverage(evidence, session_data.get("component"))
 
     return {
         "response_text": display_text,
+        "raw_response": response_text,
         "session_update": session_update,
         "questions": questions,
         "knowledge_confidence": confidence,
         "confidence_reason": confidence_reason,
         "retrieved_evidence": evidence,
+        "kb_gap_detected": kb_gap,
+        "kb_coverage_score": kb_score,
     }
 
 
@@ -313,15 +346,16 @@ def generate_opening_message(session_data: Dict[str, Any]) -> Dict[str, Any]:
 
     response = client.messages.create(
         model="claude-sonnet-4-6",
-        max_tokens=2500,
+        max_tokens=1200,
         temperature=0.2,
         system=system_prompt,
         messages=[{"role": "user", "content": opening_request}],
-        tools=[DIAGNOSTIC_TOOL],
-        tool_choice={"type": "auto"},
     )
 
-    display_text, session_update, questions, confidence, confidence_reason = _parse_tool_response(response)
+    response_text = response.content[0].text
+    session_update, questions, confidence, confidence_reason = _extract_structured_data(response_text)
+    display_text = _clean_response_text(response_text)
+    kb_gap, kb_score = _assess_kb_coverage(evidence, session_data.get("component"))
 
     return {
         "response_text": display_text,
@@ -330,44 +364,72 @@ def generate_opening_message(session_data: Dict[str, Any]) -> Dict[str, Any]:
         "knowledge_confidence": confidence,
         "confidence_reason": confidence_reason,
         "retrieved_evidence": evidence,
+        "kb_gap_detected": kb_gap,
+        "kb_coverage_score": kb_score,
     }
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
-def _parse_tool_response(response):
-    """Parse a Claude response that may or may not use tool_use.
-    Returns (display_text, session_update, questions, confidence, confidence_reason).
+def _extract_structured_data(text: str):
+    """Extract session_update, questions, and knowledge_confidence from the AI JSON block.
+    Returns (session_update: dict, questions: list, confidence: str, confidence_reason: str).
     """
-    import re as _re
-
-    display_text      = ""
-    session_update    = {}
-    questions         = []
-    confidence        = "high"
-    confidence_reason = ""
-    tool_called       = False
-
-    for block in response.content:
-        if block.type == "text":
-            display_text += block.text
-        elif block.type == "tool_use" and block.name == "submit_diagnostic_data":
-            tool_called       = True
-            data              = block.input
-            session_update    = data.get("session_update", {})
-            questions         = data.get("questions", [])
-            confidence        = data.get("knowledge_confidence", "high")
-            confidence_reason = data.get("confidence_reason", "")
-
-    # Fallback: if tool wasn't called, try regex on the text block
-    if not tool_called and display_text:
-        match = _re.search(r"```json\s*(.*?)\s*```", display_text, _re.DOTALL)
+    try:
+        import re
+        pattern = r"```json\s*(.*?)\s*```"
+        match = re.search(pattern, text, re.DOTALL)
         if match:
-            try:
-                data = json.loads(match.group(1))
-                session_update = data.get("session_update", {})
-            except (json.JSONDecodeError, AttributeError):
-                pass
-        display_text = _re.sub(r"```json\s*.*?```", "", display_text, flags=_re.DOTALL)
+            data = json.loads(match.group(1))
+            session_update = data.get("session_update", {})
+            questions = data.get("questions", [])
+            confidence = data.get("knowledge_confidence", "high")
+            confidence_reason = data.get("confidence_reason", "")
+            return session_update, questions, confidence, confidence_reason
+    except (json.JSONDecodeError, AttributeError):
+        pass
+    return {}, [], "high", ""
 
-    return display_text.strip(), session_update, questions, confidence, confidence_reason
+
+def _clean_response_text(text: str) -> str:
+    """Remove the JSON block from the display text."""
+    import re
+    cleaned = re.sub(r"```json\s*.*?```", "", text, flags=re.DOTALL)
+    return cleaned.strip()
+
+
+# KB coverage threshold: cosine similarity below this means the KB lacks
+# relevant content for this query — gap detected independently of the LLM.
+_KB_GAP_THRESHOLD = 0.45
+
+
+def _assess_kb_coverage(
+    evidence: List[Dict[str, Any]],
+    component: Optional[str],
+) -> tuple[bool, float]:
+    """
+    Returns (gap_detected: bool, max_relevance_score: float).
+
+    Uses RAG retrieval similarity scores — works independently of the LLM.
+    If the best-matching KB chunk has cosine similarity < _KB_GAP_THRESHOLD,
+    the knowledge base genuinely lacks relevant content for this query.
+    """
+    if not evidence:
+        return True, 0.0
+
+    # Prefer scores from the component-specific file if available
+    from backend.rag_system import COMPONENT_FILE_MAP
+    component_file = COMPONENT_FILE_MAP.get(component, "") if component else ""
+
+    component_scores = [
+        e["relevance_score"] for e in evidence
+        if e.get("source") == component_file and "relevance_score" in e
+    ]
+    all_scores = [e["relevance_score"] for e in evidence if "relevance_score" in e]
+
+    # Use component-specific scores if available, else all scores
+    scores = component_scores if component_scores else all_scores
+    max_score = max(scores) if scores else 0.0
+
+    gap_detected = max_score < _KB_GAP_THRESHOLD
+    return gap_detected, round(max_score, 3)

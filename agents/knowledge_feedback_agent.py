@@ -125,7 +125,7 @@ class KnowledgeFeedbackAgent(BaseAgent):
         history            : list = payload.get("conversation_history", [])
         lifecycle_state    : str  = payload.get("lifecycle_state", "")
         kb_gap_flag        : bool = payload.get("knowledge_gap_indicator", False)
-        chunk_count        : int  = payload.get("retrieval_chunk_count", 0)
+        chunk_count = payload.get("retrieval_chunk_count")  # None = not measured at report time
         evidence           : list = payload.get("retrieved_evidence", [])
         resolved           : bool = payload.get("session_resolved", False)
         hypothesis         : str  = payload.get("current_hypothesis") or ""
@@ -165,7 +165,7 @@ class KnowledgeFeedbackAgent(BaseAgent):
             )
             confidence = 0.85
 
-        elif kb_gap_flag or chunk_count == 0:
+        elif kb_gap_flag or (chunk_count is not None and chunk_count == 0):
             gap_type     = "no_specs"
             gap_desc     = GAP_TYPES["no_specs"]
             missing_info = (
